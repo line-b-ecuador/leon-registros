@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LeonCar V20 Drive - Cualquier Usuario</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+*{box-sizing:border-box;font-family:system-ui,sans-serif}
+body{margin:0;background:#0f172a;color:#e2e8f0;min-height:100vh}
+header{background:#1e293b;padding:16px;text-align:center;position:sticky;top:0;z-index:10}
+.container{max-width:540px;margin:0 auto;padding:14px}
+.card{background:#1e293b;border-radius:16px;padding:16px;margin-bottom:12px}
+.btn{width:100%;padding:14px;border:none;border-radius:12px;font-weight:800;font-size:15px;cursor:pointer}
+.btn-green{background:#22c55e;color:#052e16}
+.btn-yellow{background:#f59e0b;color:#451a03}
+.btn-blue{background:#3b82f6;color:#fff}
+.btn-dark{background:#334155;color:#fff;margin-top:8px}
+.btn-small{padding:8px 12px;font-size:12px;border-radius:20px;border:1px solid #334155;background:#0f172a;color:#94a3b8;cursor:pointer}
+.btn-small.active{background:#22c55e;color:#052e16;border-color:#22c55e;font-weight:800}
+label{font-size:13px;color:#94a3b8;display:block;margin:12px 0 6px}
+input{width:100%;padding:12px;border-radius:10px;border:1px solid #334155;background:#0f172a;color:#fff;font-size:16px}
+.kpi{display:flex;justify-content:space-between;background:#0f172a;padding:12px;border-radius:10px;margin:7px 0;font-size:14px}
+.kpi b{color:#22c55e}
+.kpi.total{border:2px solid #22c55e;background:#22c55e15}
+.hidden{display:none!important}
+.small{font-size:11px;color:#94a3b8}
+table{width:100%;font-size:12px;border-collapse:collapse}
+th{color:#94a3b8;text-align:left;padding:6px}
+td{padding:8px 6px;border-top:1px solid #334155}
+footer{text-align:center;padding:20px;font-size:11px;color:#64748b}
+footer a{color:#94a3b8;text-decoration:underline}
+</style>
+</head>
+<body>
+<header><h1>🦁 LeonCar V20 Drive</h1></header>
+<div class="container">
+<div class="card" id="registroCard">
+<h3>Registro</h3>
+<label>Nombre</label><input id="r_nombre">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+<div><label>Teléfono</label><input id="r_tel"></div>
+<div><label>Placa</label><input id="r_placa" style="text-transform:uppercase"></div>
+</div>
+<label>Correo del chofer (cualquier Gmail)</label><input id="r_correo" type="email" placeholder="cualquier gmail">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+<div><label>Rend x galón</label><input id="r_rend" type="number"></div>
+<div><label>Valor x galón</label><input id="r_precio" type="number"></div>
+</div>
+<label>Marca</label><input id="r_marca">
+<label>Caducidad licencia</label><input id="r_cad" placeholder="DD/MM/AAAA">
+<label>Matriculación</label><input id="r_matri" placeholder="MM/AAAA">
+<button class="btn btn-green" style="margin-top:14px" onclick="guardarRegistro()">Guardar</button>
+</div>
+<div id="appCard" class="hidden">
+<div class="card">
+<div style="display:flex;justify-content:space-between"><strong id="estadoTxt">Sin jornada</strong><span id="gpsStatus" style="font-size:10px;color:#22c55e">GPS</span></div>
+<div id="profileView" style="margin-top:10px" class="small"></div>
+<button class="btn btn-dark" style="padding:8px;font-size:12px" onclick="editarRegistro()">Editar</button>
+</div>
+<div class="card" style="border:2px solid #22c55e">
+<h3 style="margin:0">☁️ Google Drive (cada cliente en su Drive)</h3>
+<p class="small" id="driveStatus">No conectado - funciona con CUALQUIER cuenta Gmail</p>
+<button class="btn btn-blue" onclick="conectarDrive()">1️⃣ Conectar a Drive</button>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+<button class="btn btn-green" onclick="guardarEnDrive()">Guardar en Drive</button>
+<button class="btn btn-yellow" onclick="restaurarDeDrive()">Restaurar de Drive</button>
+</div>
+<p class="small">Se guarda como LeonCar_backup.json en el Drive de quien inicia sesión.</p>
+</div>
+<div class="card" id="cardInicio">
+<h3>Inicio del día</h3>
+<label>Kilometraje actual</label><input type="number" id="kmIni">
+<button class="btn btn-green" style="margin-top:10px" onclick="iniciarJornada()">Iniciar día</button>
+</div>
+<div class="card hidden" id="cardFin">
+<h3>Final del día</h3>
+<div class="kpi"><span>Kilometraje inicial</span><b id="kA">-</b></div>
+<div class="kpi"><span>GPS</span><b id="kGps">0.00 km</b></div>
+<label>Kilometraje final</label>
+<div style="display:flex;gap:8px;margin-bottom:8px">
+<button class="btn-small active" id="btnManual" onclick="setModo('manual')">Manual</button>
+<button class="btn-small" id="btnGps" onclick="setModo('gps')">Por GPS</button>
+</div>
+<input type="number" id="kmFin">
+<div class="kpi"><span>Recorrido</span><b id="kRec">0.00 km</b></div>
+<label>Ingresos</label><input type="number" id="ingresos">
+<label>Combustible auto</label><input type="number" id="comb" readonly style="border:2px solid #22c55e;color:#22c55e;font-weight:800;font-size:18px">
+<label>Otros gastos</label><input type="number" id="otros">
+<label>Detalle</label><input id="detalle">
+<div class="kpi total"><span>Ganancia</span><b id="kE">$0.00</b></div>
+<button class="btn btn-yellow" onclick="finalizarJornada()">Guardar día</button>
+</div>
+<div class="card">
+<h3>Historial</h3>
+<div style="overflow:auto"><table><thead><tr><th>Fecha</th><th>Comb</th><th>Ganancia</th></tr></thead><tbody id="tbodyHist"></tbody></table></div>
+<button class="btn btn-dark" style="background:#7f1d1d" onclick="borrarHistorial()">Borrar historial</button>
+</div>
+</div>
+<footer>
+<a href="https://line-b-ecuador.github.io/privacidad.html" target="_blank">Política de Privacidad</a> | <a href="https://line-b-ecuador.github.io/terminos.html" target="_blank">Términos</a><br>LeonCar V20 - Uso interno
+</footer>
+</div>
+<script>
+const CLIENT_ID = "964660663968-5779his9m7kbr2liukrqu3ohh8sbpaak.apps.googleusercontent.com";
+const SCOPES = "https://www.googleapis.com/auth/drive.file";
+let accessToken = null;
+let tokenClient = null;
+function initGis(){
+ tokenClient = google.accounts.oauth2.initTokenClient({
+  client_id: CLIENT_ID,
+  scope: SCOPES,
+  callback: (resp)=>{
+   if(resp.access_token){
+    accessToken = resp.access_token;
+    localStorage.setItem('leon_drive_token', accessToken);
+    document.getElementById('driveStatus').innerText = "✅ Conectado a Drive con cualquier usuario";
+   }
+  }
+ });
+ const saved = localStorage.getItem('leon_drive_token');
+ if(saved){ accessToken = saved; document.getElementById('driveStatus').innerText="✅ Conectado (token guardado)"; }
+}
+window.onload = ()=>{ setTimeout(initGis, 1500); };
+function conectarDrive(){
+ if(!tokenClient) return alert("Espera 2 seg, cargando Google...");
+ tokenClient.requestAccessToken({prompt:''});
+}
+async function guardarEnDrive(){
+ if(!accessToken) return alert("Primero dale a Conectar a Drive");
+ const data = {perfil:perfil, historial:historial, fecha:new Date().toISOString()};
+ const fileContent = JSON.stringify(data);
+ let fileId = localStorage.getItem('leon_drive_fileId');
+ try{
+  document.getElementById('driveStatus').innerText="Guardando...";
+  if(fileId){
+   const res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+    method:'PATCH',
+    headers:{'Authorization':'Bearer '+accessToken, 'Content-Type':'application/json'},
+    body: fileContent
+   });
+   if(!res.ok) throw new Error("Token expirado, reconecta");
+  } else {
+   const metadata = {name:'LeonCar_backup.json', mimeType:'application/json'};
+   const form = new FormData();
+   form.append('metadata', new Blob([JSON.stringify(metadata)],{type:'application/json'}));
+   form.append('file', new Blob([fileContent],{type:'application/json'}));
+   const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+    method:'POST',
+    headers:{'Authorization':'Bearer '+accessToken},
+    body: form
+   });
+   const json = await res.json();
+   if(json.id){ fileId=json.id; localStorage.setItem('leon_drive_fileId', fileId); }
+   else throw new Error(JSON.stringify(json));
+  }
+  document.getElementById('driveStatus').innerText="✅ Guardado: "+new Date().toLocaleString();
+ }catch(e){
+  document.getElementById('driveStatus').innerText="❌ Error: "+e.message;
+  localStorage.removeItem('leon_drive_token'); accessToken=null;
+ }
+}
+async function restaurarDeDrive(){
+ if(!accessToken) return alert("Primero Conectar a Drive");
+ try{
+  document.getElementById('driveStatus').innerText="Buscando...";
+  const q = encodeURIComponent("name='LeonCar_backup.json' and trashed=false");
+  const resList = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`, {
+   headers:{'Authorization':'Bearer '+accessToken}
+  });
+  const list = await resList.json();
+  if(!list.files || list.files.length===0){ alert("No hay backup en Drive"); return; }
+  const fileId = list.files[0].id;
+  localStorage.setItem('leon_drive_fileId', fileId);
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+   headers:{'Authorization':'Bearer '+accessToken}
+  });
+  const data = await res.json();
+  if(confirm(`Restaurar backup del ${new Date(data.fecha).toLocaleString()} con ${data.historial.length} días?`)){
+   localStorage.setItem(LS_PERFIL, JSON.stringify(data.perfil));
+   localStorage.setItem(LS_HIST, JSON.stringify(data.historial));
+   perfil=data.perfil; historial=data.historial;
+   init(); document.getElementById('driveStatus').innerText="✅ Restaurado";
+  }
+ }catch(e){ alert("Error restaurar: "+e.message); }
+}
+const LS_PERFIL='leon_v17_perfil';
+const LS_JORNADA='leon_v17_jornada';
+const LS_HIST='leon_v17_hist';
+let perfil=JSON.parse(localStorage.getItem(LS_PERFIL)||'null');
+let jornada=JSON.parse(localStorage.getItem(LS_JORNADA)||'null');
+let historial=JSON.parse(localStorage.getItem(LS_HIST)||'[]');
+let modoFinal='manual';
+let watchId=null; let lastPos=null; let gpsKmAcumulado=0;
+function guardarRegistro(){
+ const data={
+  nombre:document.getElementById('r_nombre').value.trim(),
+  tel:document.getElementById('r_tel').value.trim(),
+  placa:document.getElementById('r_placa').value.trim().toUpperCase(),
+  correo:document.getElementById('r_correo').value.trim().toLowerCase(),
+  rend:parseFloat(document.getElementById('r_rend').value),
+  precio:parseFloat(document.getElementById('r_precio').value),
+  marca:document.getElementById('r_marca').value.trim(),
+  cad:document.getElementById('r_cad').value.trim(),
+  matri:document.getElementById('r_matri').value.trim()
+ };
+ if(!data.nombre||!data.placa||!data.rend||!data.precio) return alert('Completa datos');
+ perfil=data; localStorage.setItem(LS_PERFIL, JSON.stringify(perfil)); init();
+}
+function mostrarPerfil(){
+ document.getElementById('profileView').innerHTML=`${perfil.nombre} - ${perfil.placa}<br>${perfil.correo} - Rend: ${perfil.rend}`;
+}
+function editarRegistro(){
+ document.getElementById('r_nombre').value=perfil.nombre;
+ document.getElementById('r_tel').value=perfil.tel;
+ document.getElementById('r_placa').value=perfil.placa;
+ document.getElementById('r_correo').value=perfil.correo;
+ document.getElementById('r_rend').value=perfil.rend;
+ document.getElementById('r_precio').value=perfil.precio;
+ document.getElementById('r_marca').value=perfil.marca;
+ document.getElementById('r_cad').value=perfil.cad;
+ document.getElementById('r_matri').value=perfil.matri;
+ document.getElementById('registroCard').classList.remove('hidden');
+ document.getElementById('appCard').classList.add('hidden');
+}
+function init(){
+ if(perfil){
+  document.getElementById('registroCard').classList.add('hidden');
+  document.getElementById('appCard').classList.remove('hidden');
+  mostrarPerfil(); updateUI();
+ } else {
+  document.getElementById('registroCard').classList.remove('hidden');
+  document.getElementById('appCard').classList.add('hidden');
+ }
+ render();
+}
+function iniciarJornada(){
+ const km=parseInt(document.getElementById('kmIni').value);
+ if(!km) return alert('Ingresa km');
+ jornada={A:km, gpsKm:0}; localStorage.setItem(LS_JORNADA, JSON.stringify(jornada)); updateUI(); iniciarGPS();
+}
+function updateUI(){
+ const enCurso=!!jornada;
+ if(!perfil) return;
+ document.getElementById('cardInicio').classList.toggle('hidden', enCurso);
+ document.getElementById('cardFin').classList.toggle('hidden',!enCurso);
+ document.getElementById('estadoTxt').innerText=enCurso?'En curso':'Sin jornada';
+ if(enCurso){
+  document.getElementById('kA').innerText=jornada.A+' km';
+  gpsKmAcumulado=jornada.gpsKm||0;
+  document.getElementById('kGps').innerText=gpsKmAcumulado.toFixed(2)+' km';
+  calcular();
+ }
+}
+function iniciarGPS(){
+ if(!navigator.geolocation) return;
+ if(watchId!==null) navigator.geolocation.clearWatch(watchId);
+ gpsKmAcumulado=jornada.gpsKm||0; lastPos=null;
+ watchId=navigator.geolocation.watchPosition(pos=>{
+   const lat=pos.coords.latitude; const lng=pos.coords.longitude;
+   if(lastPos){
+    const d=haversine(lastPos.lat,lastPos.lng,lat,lng);
+    if(d>0.01 && d<2) gpsKmAcumulado+=d;
+   }
+   lastPos={lat,lng}; jornada.gpsKm=gpsKmAcumulado;
+   localStorage.setItem(LS_JORNADA, JSON.stringify(jornada));
+   document.getElementById('kGps').innerText=gpsKmAcumulado.toFixed(2)+' km';
+   if(modoFinal==='gps') calcular();
+ },null,{enableHighAccuracy:true});
+}
+function haversine(lat1,lon1,lat2,lon2){
+ const R=6371; const dLat=(lat2-lat1)*Math.PI/180; const dLon=(lon2-lon1)*Math.PI/180;
+ const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+ return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+function setModo(m){
+ modoFinal=m;
+ document.getElementById('btnManual').classList.toggle('active',m==='manual');
+ document.getElementById('btnGps').classList.toggle('active',m==='gps');
+ document.getElementById('kmFin').readOnly=(m==='gps');
+ calcular();
+}
+function calcular(){
+ if(!jornada||!perfil) return;
+ const A=jornada.A;
+ let B;
+ if(modoFinal==='gps'){ B=A+gpsKmAcumulado; document.getElementById('kmFin').value=B.toFixed(2); }
+ else { B=parseFloat(document.getElementById('kmFin').value); if(isNaN(B)) B=A; }
+ const C=parseFloat(document.getElementById('ingresos').value)||0;
+ const F=parseFloat(document.getElementById('otros').value)||0;
+ const rec=B-A; const recValido=rec>0?rec:0;
+ const D=recValido>0? (recValido / perfil.rend) * perfil.precio : 0;
+ const E=C-D-F;
+ document.getElementById('kRec').innerText=recValido.toFixed(2)+' km';
+ document.getElementById('comb').value=D>0? D.toFixed(2) : '';
+ document.getElementById('kE').innerText=`$${E.toFixed(2)}`;
+}
+['kmFin','ingresos','otros'].forEach(id=>{ document.getElementById(id).addEventListener('input',calcular); });
+function finalizarJornada(){
+ const C=parseFloat(document.getElementById('ingresos').value)||0;
+ const F=parseFloat(document.getElementById('otros').value)||0;
+ const detalle=document.getElementById('detalle').value.trim();
+ let B=modoFinal==='gps'? jornada.A+gpsKmAcumulado : parseFloat(document.getElementById('kmFin').value);
+ if(isNaN(B) || B<=jornada.A){ alert('Km final debe ser mayor'); return; }
+ const rec=B-jornada.A; const D=(rec/perfil.rend)*perfil.precio; const E=C-D-F;
+ historial.unshift({fecha:new Date().toISOString(), A:jornada.A, B:B, rec:rec, C:C, D:D, F:F, E:E, detalle:detalle});
+ localStorage.setItem(LS_HIST, JSON.stringify(historial));
+ if(watchId!==null) navigator.geolocation.clearWatch(watchId);
+ localStorage.removeItem(LS_JORNADA); jornada=null; gpsKmAcumulado=0;
+ document.getElementById('kmFin').value=''; document.getElementById('ingresos').value=''; document.getElementById('otros').value=''; document.getElementById('detalle').value=''; document.getElementById('comb').value='';
+ updateUI(); render(); guardarEnDrive();
+}
+function render(){
+ const tbody=document.getElementById('tbodyHist'); tbody.innerHTML='';
+ historial.forEach(r=>{
+  const tr=document.createElement('tr');
+  tr.innerHTML=`<td>${new Date(r.fecha).toLocaleDateString()}</td><td>$${r.D.toFixed(2)}</td><td style="color:${r.E>=0?'#22c55e':'#ef4444'}">$${r.E.toFixed(2)}</td>`;
+  tbody.appendChild(tr);
+ });
+}
+function borrarHistorial(){ if(confirm('¿Borrar?')){ localStorage.removeItem(LS_HIST); historial=[]; render(); } }
+init();
+</script>
+</body>
+</html>
