@@ -1,10 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LeonCar V20 Drive - Cualquier Usuario</title>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
+<title>LeonCar - Cualquier Usuario</title>
 <style>
 *{box-sizing:border-box;font-family:system-ui,sans-serif}
 body{margin:0;background:#0f172a;color:#e2e8f0;min-height:100vh}
@@ -104,28 +104,29 @@ footer a{color:#94a3b8;text-decoration:underline}
 <script>
 const CLIENT_ID = "964660663968-5779his9m7kbr2liukrqu3ohh8sbpaak.apps.googleusercontent.com";
 const SCOPES = "https://www.googleapis.com/auth/drive.file";
-let accessToken = null;
-let tokenClient = null;
-function initGis(){
- tokenClient = google.accounts.oauth2.initTokenClient({
-  client_id: CLIENT_ID,
-  scope: SCOPES,
-  callback: (resp)=>{
-   if(resp.access_token){
-    accessToken = resp.access_token;
-    localStorage.setItem('leon_drive_token', accessToken);
-    document.getElementById('driveStatus').innerText = "✅ Conectado a Drive con cualquier usuario";
-   }
+const REDIRECT_URI = "https://line-b-ecuador.github.io/leon-registros/";
+let accessToken = localStorage.getItem('leon_drive_token');
+
+function checkTokenFromUrl(){
+  if(window.location.hash && window.location.hash.includes("access_token=")){
+    const params = new URLSearchParams(window.location.hash.substring(1));
+    const token = params.get("access_token");
+    if(token){
+      accessToken = token;
+      localStorage.setItem('leon_drive_token', token);
+      document.getElementById('driveStatus').innerText = "✅ Conectado a Drive";
+      history.replaceState(null,null,window.location.pathname);
+    }
+  } else if(accessToken){
+    document.getElementById('driveStatus').innerText = "✅ Conectado (token guardado)";
   }
- });
- const saved = localStorage.getItem('leon_drive_token');
- if(saved){ accessToken = saved; document.getElementById('driveStatus').innerText="✅ Conectado (token guardado)"; }
 }
-window.onload = ()=>{ setTimeout(initGis, 1500); };
+
 function conectarDrive(){
- if(!tokenClient) return alert("Espera 2 seg, cargando Google...");
- tokenClient.requestAccessToken({prompt:''});
+  const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=token&scope=${encodeURIComponent(SCOPES)}&prompt=consent&include_granted_scopes=true`;
+  window.location.href = url;
 }
+
 async function guardarEnDrive(){
  if(!accessToken) return alert("Primero dale a Conectar a Drive");
  const data = {perfil:perfil, historial:historial, fecha:new Date().toISOString()};
@@ -160,6 +161,7 @@ async function guardarEnDrive(){
   localStorage.removeItem('leon_drive_token'); accessToken=null;
  }
 }
+
 async function restaurarDeDrive(){
  if(!accessToken) return alert("Primero Conectar a Drive");
  try{
@@ -184,6 +186,7 @@ async function restaurarDeDrive(){
   }
  }catch(e){ alert("Error restaurar: "+e.message); }
 }
+
 const LS_PERFIL='leon_v17_perfil';
 const LS_JORNADA='leon_v17_jornada';
 const LS_HIST='leon_v17_hist';
@@ -192,6 +195,7 @@ let jornada=JSON.parse(localStorage.getItem(LS_JORNADA)||'null');
 let historial=JSON.parse(localStorage.getItem(LS_HIST)||'[]');
 let modoFinal='manual';
 let watchId=null; let lastPos=null; let gpsKmAcumulado=0;
+
 function guardarRegistro(){
  const data={
   nombre:document.getElementById('r_nombre').value.trim(),
@@ -224,6 +228,7 @@ function editarRegistro(){
  document.getElementById('appCard').classList.add('hidden');
 }
 function init(){
+ checkTokenFromUrl();
  if(perfil){
   document.getElementById('registroCard').classList.add('hidden');
   document.getElementById('appCard').classList.remove('hidden');
