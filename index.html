@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -58,16 +57,6 @@ footer a{color:#94a3b8;text-decoration:underline}
 <div id="profileView" style="margin-top:10px" class="small"></div>
 <button class="btn btn-dark" style="padding:8px;font-size:12px" onclick="editarRegistro()">Editar</button>
 </div>
-<div class="card" style="border:2px solid #22c55e">
-<h3 style="margin:0">☁️ Google Drive (cada cliente en su Drive)</h3>
-<p class="small" id="driveStatus">No conectado - funciona con CUALQUIER cuenta Gmail</p>
-<button class="btn btn-blue" onclick="conectarDrive()">1️⃣ Conectar a Drive</button>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
-<button class="btn btn-green" onclick="guardarEnDrive()">Guardar en Drive</button>
-<button class="btn btn-yellow" onclick="restaurarDeDrive()">Restaurar de Drive</button>
-</div>
-<p class="small">Se guarda como LeonCar_backup.json en el Drive de quien inicia sesión.</p>
-</div>
 <div class="card" id="cardInicio">
 <h3>Inicio del día</h3>
 <label>Kilometraje actual</label><input type="number" id="kmIni">
@@ -96,15 +85,25 @@ footer a{color:#94a3b8;text-decoration:underline}
 <div style="overflow:auto"><table><thead><tr><th>Fecha</th><th>Comb</th><th>Ganancia</th></tr></thead><tbody id="tbodyHist"></tbody></table></div>
 <button class="btn btn-dark" style="background:#7f1d1d" onclick="borrarHistorial()">Borrar historial</button>
 </div>
+<div class="card" style="border:2px solid #22c55e">
+<h3 style="margin:0">☁️ Google Drive (cada cliente en su Drive)</h3>
+<p class="small" id="driveStatus">No conectado - funciona con CUALQUIER cuenta Gmail</p>
+<button class="btn btn-blue" onclick="conectarDrive()">1️⃣ Conectar a Drive</button>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+<button class="btn btn-green" onclick="guardarEnDrive()">Guardar en Drive</button>
+<button class="btn btn-yellow" onclick="restaurarDeDrive()">Restaurar de Drive</button>
+</div>
+<p class="small">Se guarda como LeonCar_backup.json en el Drive de quien inicia sesión.</p>
+</div>
 </div>
 <footer>
-<a href="https://line-b-ecuador.github.io/privacidad.html" target="_blank">Política de Privacidad</a> | <a href="https://line-b-ecuador.github.io/terminos.html" target="_blank">Términos</a><br>LeonCar V20 - Uso interno
+<a href="[line-b-ecuador.github.io](https://line-b-ecuador.github.io/privacidad.html)" target="_blank">Política de Privacidad</a> | <a href="[line-b-ecuador.github.io](https://line-b-ecuador.github.io/terminos.html)" target="_blank">Términos</a><br>LeonCar V20 - Uso interno
 </footer>
 </div>
 <script>
 const CLIENT_ID = "964660663968-5779his9m7kbr2liukrqu3ohh8sbpaak.apps.googleusercontent.com";
-const SCOPES = "https://www.googleapis.com/auth/drive.file";
-const REDIRECT_URI = "https://line-b-ecuador.github.io/leon-registros/";
+const SCOPES = "[googleapis.com](https://www.googleapis.com/auth/drive.file)";
+const REDIRECT_URI = "[line-b-ecuador.github.io](https://line-b-ecuador.github.io/leon-registros/)";
 let accessToken = localStorage.getItem('leon_drive_token');
 
 function checkTokenFromUrl(){
@@ -123,7 +122,7 @@ function checkTokenFromUrl(){
 }
 
 function conectarDrive(){
-  const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=token&scope=${encodeURIComponent(SCOPES)}&prompt=consent&include_granted_scopes=true`;
+  const url = `[accounts.google.com](https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=token&scope=${encodeURIComponent(SCOPES)}&prompt=consent&include_granted_scopes=true)`;
   window.location.href = url;
 }
 
@@ -135,7 +134,7 @@ async function guardarEnDrive(){
  try{
   document.getElementById('driveStatus').innerText="Guardando...";
   if(fileId){
-   const res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+   const res = await fetch(`[googleapis.com](https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media)`, {
     method:'PATCH',
     headers:{'Authorization':'Bearer '+accessToken, 'Content-Type':'application/json'},
     body: fileContent
@@ -146,7 +145,7 @@ async function guardarEnDrive(){
    const form = new FormData();
    form.append('metadata', new Blob([JSON.stringify(metadata)],{type:'application/json'}));
    form.append('file', new Blob([fileContent],{type:'application/json'}));
-   const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+   const res = await fetch('[googleapis.com](https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart)', {
     method:'POST',
     headers:{'Authorization':'Bearer '+accessToken},
     body: form
@@ -167,14 +166,14 @@ async function restaurarDeDrive(){
  try{
   document.getElementById('driveStatus').innerText="Buscando...";
   const q = encodeURIComponent("name='LeonCar_backup.json' and trashed=false");
-  const resList = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`, {
+  const resList = await fetch(`[googleapis.com](https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name))`, {
    headers:{'Authorization':'Bearer '+accessToken}
   });
   const list = await resList.json();
   if(!list.files || list.files.length===0){ alert("No hay backup en Drive"); return; }
   const fileId = list.files[0].id;
   localStorage.setItem('leon_drive_fileId', fileId);
-  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+  const res = await fetch(`[googleapis.com](https://www.googleapis.com/drive/v3/files/${fileId}?alt=media)`, {
    headers:{'Authorization':'Bearer '+accessToken}
   });
   const data = await res.json();
@@ -255,6 +254,7 @@ function updateUI(){
   gpsKmAcumulado=jornada.gpsKm||0;
   document.getElementById('kGps').innerText=gpsKmAcumulado.toFixed(2)+' km';
   calcular();
+  if(watchId===null) iniciarGPS();
  }
 }
 function iniciarGPS(){
@@ -311,7 +311,7 @@ function finalizarJornada(){
  historial.unshift({fecha:new Date().toISOString(), A:jornada.A, B:B, rec:rec, C:C, D:D, F:F, E:E, detalle:detalle});
  localStorage.setItem(LS_HIST, JSON.stringify(historial));
  if(watchId!==null) navigator.geolocation.clearWatch(watchId);
- localStorage.removeItem(LS_JORNADA); jornada=null; gpsKmAcumulado=0;
+ localStorage.removeItem(LS_JORNADA); jornada=null; gpsKmAcumulado=0; watchId=null;
  document.getElementById('kmFin').value=''; document.getElementById('ingresos').value=''; document.getElementById('otros').value=''; document.getElementById('detalle').value=''; document.getElementById('comb').value='';
  updateUI(); render(); guardarEnDrive();
 }
