@@ -1,8 +1,8 @@
 {
-  "name": "LeonCar Registro",
+  "name": "LeonCar Registros",
   "short_name": "LeonCar",
-  "description": "Registro de vehículos LeonCar - Line-B Ecuador",
-  "start_url": ".",
+  "description": "Registro de vehículos LeonCar - Línea B Ecuador",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#FFCC00",
