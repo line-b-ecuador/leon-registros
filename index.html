@@ -43,6 +43,9 @@ input.caducado{border:2px solid #ef4444;color:#ef4444;background:#ef444412}
 #loading{position:fixed;top:0;left:0;width:100%;height:100%;background:#0f172a;display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:20px}
 .spinner{width:50px;height:50px;border:4px solid #334155;border-top-color:#22c55e;border-radius:50%;animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+/* Banner de permiso GPS */
+#gpsBanner{position:fixed;bottom:0;left:0;right:0;background:#7f1d1d;color:#fff;padding:14px;text-align:center;font-size:13px;z-index:9998;display:none;box-shadow:0 -4px 20px rgba(0,0,0,.5)}
+#gpsBanner button{margin-top:8px;padding:8px 16px;border:0;border-radius:20px;background:#fff;color:#7f1d1d;font-weight:800;cursor:pointer;font-size:13px}
 </style>
 </head>
 <body>
@@ -148,6 +151,13 @@ input.caducado{border:2px solid #ef4444;color:#ef4444;background:#ef444412}
   </footer>
 </div>
 
+<!-- Banner de permiso GPS denegado -->
+<div id="gpsBanner">
+  ⚠️ <b>GPS bloqueado</b><br>
+  <span style="font-size:12px">LeonCar necesita acceso a tu ubicación para calcular distancias</span><br>
+  <button onclick="abrirAjustesGPS()">Abrir Ajustes</button>
+</div>
+
 <!-- ================= FIREBASE SDK ================= -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
@@ -188,10 +198,76 @@ let watchId = null;
 let lastPos = null;
 let gpsKmAcumulado = 0;
 
+/* ================= PERMISO GPS AL ABRIR ================= */
+async function pedirPermisoUbicacion(){
+  if (!navigator.geolocation) {
+    console.warn('Geolocation no soportado');
+    return;
+  }
+  
+  try {
+    if (navigator.permissions && navigator.permissions.query) {
+      const status = await navigator.permissions.query({ name: 'geolocation' });
+      console.log('📍 Estado permiso GPS:', status.state);
+      
+      if (status.state === 'denied') {
+        document.getElementById('gpsBanner').style.display = 'block';
+        document.getElementById('gpsStatus').textContent = '❌ GPS bloqueado';
+        document.getElementById('gpsStatus').style.color = '#ef4444';
+        return;
+      }
+      
+      if (status.state === 'granted') {
+        console.log('✅ GPS ya autorizado');
+        document.getElementById('gpsStatus').textContent = '✅ GPS activo';
+        document.getElementById('gpsStatus').style.color = '#22c55e';
+        return;
+      }
+      
+      status.onchange = () => {
+        console.log('📍 Permiso cambió a:', status.state);
+        if (status.state === 'denied') {
+          document.getElementById('gpsBanner').style.display = 'block';
+        } else {
+          document.getElementById('gpsBanner').style.display = 'none';
+        }
+      };
+    }
+    
+    navigator.geolocation.getCurrentPosition(
+      () => {
+        console.log('✅ GPS autorizado');
+        document.getElementById('gpsStatus').textContent = '✅ GPS activo';
+        document.getElementById('gpsStatus').style.color = '#22c55e';
+      },
+      (err) => {
+        console.warn('⚠ GPS:', err.message);
+        if (err.code === 1) {
+          document.getElementById('gpsBanner').style.display = 'block';
+          document.getElementById('gpsStatus').textContent = '❌ GPS bloqueado';
+          document.getElementById('gpsStatus').style.color = '#ef4444';
+        }
+      },
+      { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
+    );
+  } catch (e) {
+    console.warn('Error consultando permisos:', e);
+  }
+}
+
+window.abrirAjustesGPS = function(){
+  alert(
+    'Para activar el GPS:\n\n' +
+    '1. Toca "Permitir" cuando aparezca el aviso\n' +
+    '2. O ve a: Ajustes → Aplicaciones → LeonCar → Permisos → Ubicación\n' +
+    '3. También revisa: Ajustes → Ubicación (activar en general)'
+  );
+  pedirPermisoUbicacion();
+};
+
 /* ================= LOGIN GOOGLE ================= */
 window.iniciarSesionGoogle = async function(){
   const provider = new GoogleAuthProvider();
-  // NO pedir scope de Drive (ya no lo usamos)
   provider.setCustomParameters({ prompt: 'select_account' });
 
   try {
@@ -200,7 +276,6 @@ window.iniciarSesionGoogle = async function(){
     await onLoginSuccess(result.user);
   } catch (err) {
     console.warn('Popup falló, intentando redirect...', err.code);
-    // Fallback para PWA instalada o navegadores que bloquean popups
     if (['auth/popup-blocked', 'auth/popup-closed-by-user', 'auth/cancelled-popup-request'].includes(err.code)) {
       try { await signInWithRedirect(auth, provider); }
       catch (e2) { alert('Error: ' + e2.message); }
@@ -230,7 +305,6 @@ onAuthStateChanged(auth, async (user) => {
     };
     localStorage.setItem('leon_google_user', JSON.stringify(googleUser));
     mostrarEstadoUsuario();
-    // Cargar datos desde la nube
     await cargarDatosNube();
   } else {
     googleUser = null;
@@ -239,6 +313,8 @@ onAuthStateChanged(auth, async (user) => {
   }
   document.getElementById('loading').classList.add('hidden');
   init();
+  // Pedir permiso GPS al abrir la app
+  setTimeout(pedirPermisoUbicacion, 1500);
 });
 
 /* Al recibir un usuario logueado */
@@ -251,7 +327,6 @@ async function onLoginSuccess(user) {
   };
   localStorage.setItem('leon_google_user', JSON.stringify(googleUser));
 
-  // Autocompletar datos
   if (!document.getElementById('r_correo').value) {
     document.getElementById('r_correo').value = user.email;
   }
@@ -303,7 +378,6 @@ async function cargarDatosNube() {
       return;
     }
     const data = snap.data();
-    // Si la nube tiene más datos, restaurar
     if (data.historial && data.historial.length > (historial?.length || 0)) {
       if (confirm(`☁️ Hay ${data.historial.length} días en la nube. ¿Restaurar?`)) {
         if (data.perfil) {
@@ -392,7 +466,6 @@ window.guardarRegistro = function(){
   if (!data.nombre || !data.placa || !data.rend || !data.precio) return alert('Completa nombre, placa, rendimiento y precio');
   perfil = data;
   localStorage.setItem(LS_PERFIL, JSON.stringify(perfil));
-  // Subir automáticamente a la nube
   if (currentUser) sincronizarSubir();
   init();
 };
@@ -449,7 +522,7 @@ window.finalizarJornada = function(){
   limpiarCamposTemporales();
   updateUI();
   render();
-  sincronizarSubir(); // Auto-sync
+  sincronizarSubir();
   setTimeout(() => {
     const el = document.getElementById('kmIni');
     if (el) { el.focus({ preventScroll: false }); el.select(); }
