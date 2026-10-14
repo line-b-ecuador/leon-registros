@@ -1,24 +1,73 @@
 {
-  "name": "LeonCar Registros",
+  "name": "LeonCar - Registro de Choferes",
   "short_name": "LeonCar",
-  "description": "Registro de vehículos LeonCar - Línea B Ecuador",
-  "start_url": "./",
+  "description": "Registro de jornadas y gastos para choferes con GPS y sincronización en la nube",
+  "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#FFCC00",
   "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#1a73e8",
+  "lang": "es",
+  "dir": "ltr",
+  "categories": ["productivity", "business", "finance"],
   "icons": [
     {
       "src": "icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "permissions": [
+    "geolocation"
+  ],
+  "features": [
+    "geolocation"
+  ],
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "Iniciar jornada",
+      "short_name": "Iniciar",
+      "description": "Comenzar una nueva jornada de trabajo",
+      "url": "./index.html?action=start",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Ver historial",
+      "short_name": "Historial",
+      "description": "Ver las jornadas registradas",
+      "url": "./index.html?action=history",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ]
 }
