@@ -7,7 +7,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LeonCar</title>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 *{box-sizing:border-box;font-family:system-ui,sans-serif}
 body{margin:0;background:#0f172a;color:#e2e8f0;min-height:100vh}
@@ -18,6 +17,7 @@ header{background:#1e293b;padding:16px;text-align:center;position:sticky;top:0;z
 .btn-green{background:#22c55e;color:#052e16}
 .btn-yellow{background:#f59e0b;color:#451a03}
 .btn-blue{background:#3b82f6;color:#fff}
+.btn-red{background:#7f1d1d;color:#fff}
 .btn-dark{background:#334155;color:#fff;margin-top:8px}
 .btn-small{padding:8px 12px;font-size:12px;border-radius:20px;border:1px solid #334155;background:#0f172a;color:#94a3b8;cursor:pointer}
 .btn-small.active{background:#22c55e;color:#052e16;border-color:#22c55e;font-weight:800}
@@ -35,636 +35,625 @@ footer{text-align:center;padding:20px;font-size:11px;color:#64748b}
 footer a{color:#94a3b8;text-decoration:underline}
 input.caducado{border:2px solid #ef4444;color:#ef4444;background:#ef444412}
 .txt-caducado{color:#ef4444;font-weight:800}
+.userBox{display:flex;align-items:center;gap:10px;background:#0f172a;padding:10px;border-radius:10px;margin-bottom:10px}
+.userBox img{width:38px;height:38px;border-radius:50%}
+.userBox div{flex:1;font-size:12px;overflow:hidden}
+.userBox b{display:block;color:#fff;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.userBox span{color:#94a3b8;font-size:11px}
+#loading{position:fixed;top:0;left:0;width:100%;height:100%;background:#0f172a;display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:20px}
+.spinner{width:50px;height:50px;border:4px solid #334155;border-top-color:#22c55e;border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
-<header><img src="icon-192.png" style="width:60px; border-radius:10px;"><h1>LeonCar</h1></header>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <div style="color:#94a3b8">Cargando LeonCar...</div>
+</div>
+
+<header>
+  <img src="icon-192.png" style="width:60px; border-radius:10px;">
+  <h1 style="margin:8px 0 0 0">LeonCar</h1>
+</header>
+
 <div class="container">
-<div class="card" id="registroCard">
-<h3>Registro</h3>
-<button class="btn btn-blue" onclick="iniciarSesionGoogle()" style="margin-bottom:12px">🔵 Iniciar con Google (recomendado)</button>
-<p class="small" id="googleInfo">O llena manual si no quieres usar Google</p>
-<label>Nombre</label><input id="r_nombre">
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-<div><label>Teléfono</label><input id="r_tel"></div>
-<div><label>Placa</label><input id="r_placa" style="text-transform:uppercase"></div>
+  <div class="card" id="registroCard">
+    <h3>Registro</h3>
+
+    <div id="userBox" class="userBox hidden">
+      <img id="uPic" src="" alt="">
+      <div>
+        <b id="uName"></b>
+        <span id="uEmail"></span>
+      </div>
+      <button class="btn-small" onclick="cerrarSesion()" style="background:#7f1d1d;color:#fff;border-color:#7f1d1d">Salir</button>
+    </div>
+
+    <button id="btnLogin" class="btn btn-blue" onclick="iniciarSesionGoogle()" style="margin-bottom:12px">
+      🔵 Iniciar con Google (recomendado)
+    </button>
+    <p class="small" id="googleInfo">Inicia sesión una vez y nunca más pedirá cuenta</p>
+
+    <label>Nombre</label><input id="r_nombre">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div><label>Teléfono</label><input id="r_tel"></div>
+      <div><label>Placa</label><input id="r_placa" style="text-transform:uppercase"></div>
+    </div>
+    <label>Correo (se llena con Google)</label><input id="r_correo" type="email" readonly placeholder="Se llena con Google">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div><label>Rend x galón</label><input id="r_rend" type="number"></div>
+      <div><label>Valor x galón</label><input id="r_precio" type="number"></div>
+    </div>
+    <label>Marca</label><input id="r_marca">
+    <label>Caducidad licencia</label><input id="r_cad" placeholder="DD/MM/AAAA">
+    <label>Matriculación</label><input id="r_matri" placeholder="MM/AAAA">
+    <button class="btn btn-green" style="margin-top:14px" onclick="guardarRegistro()">Guardar y entrar</button>
+  </div>
+
+  <div id="appCard" class="hidden">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between"><strong id="estadoTxt">Sin jornada</strong><span id="gpsStatus" style="font-size:10px;color:#22c55e">GPS</span></div>
+      <div id="profileView" style="margin-top:10px" class="small"></div>
+      <button class="btn btn-dark" style="padding:8px;font-size:12px" onclick="editarRegistro()">Editar datos</button>
+    </div>
+    <div class="card" id="cardInicio">
+      <h3>Inicio del día</h3>
+      <label>Kilometraje actual</label><input type="number" id="kmIni" step="1" min="0" inputmode="numeric" autocomplete="off" placeholder="Ej: 123456">
+      <button class="btn btn-green" style="margin-top:10px" onclick="iniciarJornada()">Iniciar día</button>
+    </div>
+    <div class="card hidden" id="cardFin">
+      <h3>Final del día</h3>
+      <div class="kpi"><span>Kilometraje inicial</span><b id="kA">-</b></div>
+      <div class="kpi"><span>GPS</span><b id="kGps">0 km</b></div>
+      <label>Kilometraje final</label>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <button class="btn-small active" id="btnManual" onclick="setModo('manual')">Manual</button>
+        <button class="btn-small" id="btnGps" onclick="setModo('gps')">Por GPS</button>
+      </div>
+      <input type="number" id="kmFin" step="1" min="0" inputmode="numeric" autocomplete="off">
+      <div class="kpi"><span>Recorrido</span><b id="kRec">0 km</b></div>
+      <label>Ingresos</label><input type="number" id="ingresos" autocomplete="off">
+      <label>Combustible auto</label><input type="number" id="comb" readonly style="border:2px solid #22c55e;color:#22c55e;font-weight:800;font-size:18px">
+      <label>Otros gastos</label><input type="number" id="otros" autocomplete="off">
+      <label>Detalle</label><input id="detalle" autocomplete="off">
+      <div class="kpi total"><span>Ganancia</span><b id="kE">$0.00</b></div>
+      <button class="btn btn-yellow" onclick="finalizarJornada()">Guardar día (auto a la nube)</button>
+    </div>
+    <div class="card">
+      <h3>Historial</h3>
+      <div style="overflow:auto">
+        <table>
+          <thead>
+            <tr><th>Fecha</th><th>Ingresos</th><th>Gastos</th><th>Ganancia</th></tr>
+          </thead>
+          <tbody id="tbodyHist"></tbody>
+        </table>
+      </div>
+      <button class="btn btn-red" onclick="borrarHistorial()">Borrar historial</button>
+    </div>
+    <div class="card" style="border:2px solid #22c55e">
+      <h3 style="margin:0">☁️ Sincronización</h3>
+      <p class="small" id="driveStatus">Inicia sesión para sincronizar</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+        <button class="btn btn-green" onclick="sincronizarSubir()">Subir a la nube</button>
+        <button class="btn btn-yellow" onclick="sincronizarBajar()">Restaurar de nube</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <a href="https://line-b-ecuador.github.io/privacidad.html" target="_blank">Privacidad</a> | 
+    <a href="https://line-b-ecuador.github.io/terminos.html" target="_blank">Términos</a><br>LeonCar
+  </footer>
 </div>
-<label>Correo (se llena automático con Google)</label><input id="r_correo" type="email" readonly placeholder="Se llena con Google">
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-<div><label>Rend x galón</label><input id="r_rend" type="number"></div>
-<div><label>Valor x galón</label><input id="r_precio" type="number"></div>
-</div>
-<label>Marca</label><input id="r_marca">
-<label>Caducidad licencia</label><input id="r_cad" placeholder="DD/MM/AAAA">
-<label>Matriculación</label><input id="r_matri" placeholder="MM/AAAA">
-<button class="btn btn-green" style="margin-top:14px" onclick="guardarRegistro()">Guardar y entrar</button>
-</div>
-<div id="appCard" class="hidden">
-<div class="card">
-<div style="display:flex;justify-content:space-between"><strong id="estadoTxt">Sin jornada</strong><span id="gpsStatus" style="font-size:10px;color:#22c55e">GPS</span></div>
-<div id="profileView" style="margin-top:10px" class="small"></div>
-<button class="btn btn-dark" style="padding:8px;font-size:12px" onclick="editarRegistro()">Editar datos</button>
-</div>
-<div class="card" id="cardInicio">
-<h3>Inicio del día</h3>
-<label>Kilometraje actual</label><input type="number" id="kmIni" step="1" min="0" inputmode="numeric" autocomplete="off" placeholder="Ej: 123456">
-<button class="btn btn-green" style="margin-top:10px" onclick="iniciarJornada()">Iniciar día</button>
-</div>
-<div class="card hidden" id="cardFin">
-<h3>Final del día</h3>
-<div class="kpi"><span>Kilometraje inicial</span><b id="kA">-</b></div>
-<div class="kpi"><span>GPS</span><b id="kGps">0 km</b></div>
-<label>Kilometraje final</label>
-<div style="display:flex;gap:8px;margin-bottom:8px">
-<button class="btn-small active" id="btnManual" onclick="setModo('manual')">Manual</button>
-<button class="btn-small" id="btnGps" onclick="setModo('gps')">Por GPS</button>
-</div>
-<input type="number" id="kmFin" step="1" min="0" inputmode="numeric" autocomplete="off">
-<div class="kpi"><span>Recorrido</span><b id="kRec">0 km</b></div>
-<label>Ingresos</label><input type="number" id="ingresos" autocomplete="off">
-<label>Combustible auto</label><input type="number" id="comb" readonly style="border:2px solid #22c55e;color:#22c55e;font-weight:800;font-size:18px">
-<label>Otros gastos</label><input type="number" id="otros" autocomplete="off">
-<label>Detalle</label><input id="detalle" autocomplete="off">
-<div class="kpi total"><span>Ganancia</span><b id="kE">$0.00</b></div>
-<button class="btn btn-yellow" onclick="finalizarJornada()">Guardar día (auto a Drive)</button>
-</div>
-<div class="card">
-<h3>Historial</h3>
-<div style="overflow:auto">
-<table>
-<thead>
-<tr>
-<th>Fecha</th>
-<th>Ingresos</th>
-<th>Gastos</th>
-<th>Ganancia</th>
-</tr>
-</thead>
-<tbody id="tbodyHist"></tbody>
-</table>
-</div>
-<button class="btn btn-dark" style="background:#7f1d1d" onclick="borrarHistorial()">Borrar historial</button>
-</div>
-<div class="card" style="border:2px solid #22c55e">
-<h3 style="margin:0">☁️ Google Drive</h3>
-<p class="small" id="driveStatus">No conectado</p>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
-<button class="btn btn-green" onclick="guardarEnDrive()">Guardar ahora</button>
-<button class="btn btn-yellow" onclick="restaurarDeDrive()">Restaurar</button>
-</div>
-<button class="btn btn-dark" onclick="iniciarSesionGoogle()" style="margin-top:8px">Cambiar cuenta Google</button>
-</div>
-</div>
-<footer>
-<a href="https://line-b-ecuador.github.io/privacidad.html" target="_blank">Privacidad</a> | <a href="https://line-b-ecuador.github.io/terminos.html" target="_blank">Términos</a><br>LeonCar
-</footer>
-</div>
-<script>
-const CLIENT_ID = "964660663968-5779his9m7kbr2liukrqu3ohh8sbpaak.apps.googleusercontent.com";
-const SCOPES = "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile";
 
-/* ================= ESTADO GLOBAL GOOGLE ================= */
-let accessToken   = localStorage.getItem('leon_drive_token') || null;
-let tokenExpiry   = parseInt(localStorage.getItem('leon_drive_expiry')||'0',10);
-let googleUser    = JSON.parse(localStorage.getItem('leon_google_user')||'null');
-let tokenClient   = null;
-let gisReady      = false;
-let intentandoConectar = false;
-/* ========================================================= */
+<!-- ================= FIREBASE SDK ================= -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence }
+  from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc }
+  from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
-/* ================= GOOGLE IDENTITY SERVICES ================= */
-function waitForGIS(cb){
-  if(typeof google !== 'undefined' && google.accounts && google.accounts.oauth2){
-    cb();
-  } else {
-    setTimeout(()=>waitForGIS(cb), 200);
-  }
-}
+/* ================= CONFIG FIREBASE ================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyDhMSb5ILNFLqoM19yipAXjPYp2PPZF3oo",
+  authDomain: "leon-ec.firebaseapp.com",
+  projectId: "leon-ec",
+  storageBucket: "leon-ec.firebasestorage.app",
+  messagingSenderId: "799013028758",
+  appId: "1:799013028758:web:3f5fa86ddd0fd9c21a53b7"
+};
 
-function initGIS(){
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: CLIENT_ID,
-    scope: SCOPES,
-    callback: (resp)=>{ /* se sobrescribe en cada llamada */ }
-  });
-  gisReady = true;
-}
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-/* Guarda el token con margen de 1 minuto para evitar 401 */
-function setToken(token, expiresIn){
-  accessToken = token;
-  const secs = parseInt(expiresIn || '3600', 10);
-  tokenExpiry = Date.now() + (secs*1000) - 60000;
-  localStorage.setItem('leon_drive_token', accessToken);
-  localStorage.setItem('leon_drive_expiry', tokenExpiry);
-  fetchGoogleUser();
-}
+/* Persistencia LOCAL → sesión eterna */
+setPersistence(auth, browserLocalPersistence).catch(err => console.warn(err));
 
-/* Renovación silenciosa: NO muestra nada si el usuario ya autorizó */
-function renovarSilencioso(){
-  if(!gisReady || !tokenClient) return Promise.resolve(false);
-  return new Promise((resolve)=>{
-    let resuelto = false;
-    const timer = setTimeout(()=>{ if(!resuelto){ resuelto=true; resolve(false); } }, 6000);
-    tokenClient.callback = (resp)=>{
-      if(resuelto) return;
-      resuelto = true;
-      clearTimeout(timer);
-      if(resp && resp.access_token){
-        setToken(resp.access_token, resp.expires_in);
-        resolve(true);
-      } else {
-        resolve(false);
-      }
-    };
-    try{
-      tokenClient.requestAccessToken({ prompt: '' });
-    }catch(e){
-      clearTimeout(timer); resuelto=true; resolve(false);
-    }
-  });
-}
-
-/* Garantiza token válido antes de usar Drive */
-async function ensureToken(){
-  if(accessToken && Date.now() < tokenExpiry) return true;
-  if(!gisReady){
-    for(let i=0;i<20 && !gisReady;i++) await new Promise(r=>setTimeout(r,200));
-  }
-  return await renovarSilencioso();
-}
-
-/* Trae datos del usuario logueado */
-async function fetchGoogleUser(){
-  if(!accessToken) return;
-  try{
-    const res = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
-      headers:{'Authorization':'Bearer '+accessToken}
-    });
-    if(res.status===401){
-      const ok = await renovarSilencioso();
-      if(ok) return fetchGoogleUser();
-      return;
-    }
-    const text = await res.text();
-    if(text.trim().startsWith("<")) throw new Error("html");
-    const u = JSON.parse(text);
-    googleUser = u;
-    localStorage.setItem('leon_google_user', JSON.stringify(u));
-    document.getElementById('googleInfo').innerText = "✅ " + u.email;
-    document.getElementById('driveStatus').innerText = "✅ Conectado: " + u.email;
-    document.getElementById('r_correo').value = u.email;
-    if(!document.getElementById('r_nombre').value && u.name) document.getElementById('r_nombre').value = u.name;
-    if(perfil){
-      perfil.correo = u.email;
-      if(!perfil.nombre && u.name) perfil.nombre = u.name;
-      localStorage.setItem(LS_PERFIL, JSON.stringify(perfil));
-      mostrarPerfil();
-    }
-  }catch(e){
-    console.log("userinfo error", e);
-  }
-}
-
-/* ⭐ LÓGICA DE CONEXIÓN ESCALONADA: silencioso → select_account → consent */
-async function conectarDrive(promptMode){
-  if(!gisReady){
-    alert('Cargando Google... intenta de nuevo en un momento.');
-    return false;
-  }
-  return new Promise((resolve)=>{
-    let resuelto = false;
-    const timeoutMs = (promptMode === 'consent' || promptMode === 'select_account') ? 120000 : 8000;
-    const timer = setTimeout(()=>{ if(!resuelto){ resuelto=true; resolve(false); } }, timeoutMs);
-
-    tokenClient.callback = (resp)=>{
-      if(resuelto) return;
-      resuelto = true;
-      clearTimeout(timer);
-      if(resp && resp.access_token){
-        setToken(resp.access_token, resp.expires_in);
-        resolve(true);
-      } else {
-        resolve(false);
-      }
-    };
-
-    // Decidir prompt según el modo
-    let prompt;
-    if(promptMode === 'consent')         prompt = 'consent';
-    else if(promptMode === 'silent')     prompt = '';
-    else if(promptMode === 'select')     prompt = 'select_account';
-    else                                 prompt = googleUser ? '' : 'select_account';
-
-    try{
-      tokenClient.requestAccessToken({ prompt });
-    }catch(e){
-      clearTimeout(timer); resuelto = true; resolve(false);
-    }
-  });
-}
-
-/* ⭐ Función principal llamada desde el botón "Iniciar con Google" y "Cambiar cuenta" */
-async function iniciarSesionGoogle(){
-  if(intentandoConectar) return;
-  intentandoConectar = true;
-  try{
-    // 1) Intento silencioso si ya conocemos al usuario
-    if(googleUser){
-      const ok = await conectarDrive('silent');
-      if(ok) return;
-    }
-    // 2) Selector de cuenta (sin consentimiento completo)
-    const ok2 = await conectarDrive('select');
-    if(ok2) return;
-    // 3) Último recurso: consentimiento completo (primera vez real)
-    await conectarDrive('consent');
-  } finally {
-    intentandoConectar = false;
-  }
-}
-
-/* ⭐ Conexión automática al abrir la app */
-async function intentarConexionAutomatica(){
-  if(!googleUser) return;
-  if(intentandoConectar) return;
-  intentandoConectar = true;
-  try{
-    if(accessToken && Date.now() < tokenExpiry){
-      await fetchGoogleUser();
-      document.getElementById('driveStatus').innerText = "✅ Conectado: " + (googleUser?.email||'');
-      return;
-    }
-    const ok = await renovarSilencioso();
-    if(ok){
-      document.getElementById('driveStatus').innerText = "✅ Reconectado: " + (googleUser?.email||'');
-    } else {
-      // No molestar con popups: mostrar estado guardado
-      document.getElementById('driveStatus').innerText = "🔒 Sesión guardada: " + googleUser.email + " — se reconectará al guardar";
-      document.getElementById('googleInfo').innerText = "🔒 Sesión guardada: " + googleUser.email;
-    }
-  } finally {
-    intentandoConectar = false;
-  }
-}
-/* ========================================================= */
-
-async function guardarEnDrive(){
-  const ok = await ensureToken();
-  if(!ok){
-    // Intento silencioso primero, luego select_account, luego consent
-    const reOk = await iniciarSesionGoogle();
-    if(!reOk) return;
-  }
-  const data = {perfil:perfil, historial:historial, fecha:new Date().toISOString(), googleUser:googleUser};
-  const fileContent = JSON.stringify(data);
-  let fileId = localStorage.getItem('leon_drive_fileId');
-  try{
-    document.getElementById('driveStatus').innerText="Guardando...";
-    let res, text;
-    if(fileId){
-      res = await fetch("https://www.googleapis.com/upload/drive/v3/files/" + fileId + "?uploadType=media", {
-        method:'PATCH',
-        headers:{'Authorization':'Bearer '+accessToken, 'Content-Type':'application/json'},
-        body: fileContent
-      });
-      text = await res.text();
-      if(res.status===401){
-        const ok2 = await renovarSilencioso();
-        if(ok2){
-          res = await fetch("https://www.googleapis.com/upload/drive/v3/files/" + fileId + "?uploadType=media", {
-            method:'PATCH',
-            headers:{'Authorization':'Bearer '+accessToken, 'Content-Type':'application/json'},
-            body: fileContent
-          });
-          text = await res.text();
-        }
-      }
-      if(!res.ok || text.trim().startsWith("<")) throw new Error("Token expirado");
-    } else {
-      const metadata = {name:'LeonCar_backup.json', mimeType:'application/json'};
-      const form = new FormData();
-      form.append('metadata', new Blob([JSON.stringify(metadata)],{type:'application/json'}));
-      form.append('file', new Blob([fileContent],{type:'application/json'}));
-      res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-        method:'POST',
-        headers:{'Authorization':'Bearer '+accessToken},
-        body: form
-      });
-      if(res.status===401){
-        const ok2 = await renovarSilencioso();
-        if(ok2){
-          const form2 = new FormData();
-          form2.append('metadata', new Blob([JSON.stringify(metadata)],{type:'application/json'}));
-          form2.append('file', new Blob([fileContent],{type:'application/json'}));
-          res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-            method:'POST',
-            headers:{'Authorization':'Bearer '+accessToken},
-            body: form2
-          });
-        }
-      }
-      text = await res.text();
-      if(!res.ok || text.trim().startsWith("<")) throw new Error("Token expirado");
-      const json = JSON.parse(text);
-      if(json.id) localStorage.setItem('leon_drive_fileId', json.id);
-    }
-    document.getElementById('driveStatus').innerText="✅ Guardado: "+new Date().toLocaleString();
-  }catch(e){
-    document.getElementById('driveStatus').innerText="❌ Reconecta Google";
-  }
-}
-
-async function restaurarDeDrive(){
-  const ok = await ensureToken();
-  if(!ok){
-    const reOk = await iniciarSesionGoogle();
-    if(!reOk) return;
-  }
-  try{
-    document.getElementById('driveStatus').innerText="Buscando...";
-    const q = encodeURIComponent("name='LeonCar_backup.json' and trashed=false");
-    let resList = await fetch("https://www.googleapis.com/drive/v3/files?q=" + q + "&fields=files(id,name)", {
-      headers:{'Authorization':'Bearer '+accessToken}
-    });
-    if(resList.status===401){
-      const ok2 = await renovarSilencioso();
-      if(!ok2){ alert("Reconecta Google"); return; }
-      resList = await fetch("https://www.googleapis.com/drive/v3/files?q=" + q + "&fields=files(id,name)", {
-        headers:{'Authorization':'Bearer '+accessToken}
-      });
-    }
-    const text = await resList.text();
-    if(text.trim().startsWith("<")) throw new Error("Token expirado");
-    const list = JSON.parse(text);
-    if(!list.files || list.files.length===0){ alert("No hay backup en Drive"); return; }
-    const fileId = list.files[0].id;
-    localStorage.setItem('leon_drive_fileId', fileId);
-    const res = await fetch("https://www.googleapis.com/drive/v3/files/" + fileId + "?alt=media", {
-      headers:{'Authorization':'Bearer '+accessToken}
-    });
-    const data = await res.json();
-    if(confirm("Restaurar backup del " + new Date(data.fecha).toLocaleString() + " con " + data.historial.length + " días?")){
-      localStorage.setItem(LS_PERFIL, JSON.stringify(data.perfil));
-      localStorage.setItem(LS_HIST, JSON.stringify(data.historial));
-      perfil=data.perfil; historial=data.historial;
-      init(); document.getElementById('driveStatus').innerText="✅ Restaurado";
-    }
-  }catch(e){ alert("Error: "+e.message); }
-}
+let googleUser = null;
+let currentUser = null;
 
 /* ================= DATOS LOCALES ================= */
-const LS_PERFIL='leon_v17_perfil';
-const LS_JORNADA='leon_v17_jornada';
-const LS_HIST='leon_v17_hist';
-let perfil=JSON.parse(localStorage.getItem(LS_PERFIL)||'null');
-let jornada=JSON.parse(localStorage.getItem(LS_JORNADA)||'null');
-let historial=JSON.parse(localStorage.getItem(LS_HIST)||'[]');
-let modoFinal='manual';
-let watchId=null; let lastPos=null; let gpsKmAcumulado=0;
+const LS_PERFIL  = 'leon_v17_perfil';
+const LS_JORNADA = 'leon_v17_jornada';
+const LS_HIST    = 'leon_v17_hist';
+let perfil  = JSON.parse(localStorage.getItem(LS_PERFIL)  || 'null');
+let jornada = JSON.parse(localStorage.getItem(LS_JORNADA) || 'null');
+let historial = JSON.parse(localStorage.getItem(LS_HIST)  || '[]');
+let modoFinal = 'manual';
+let watchId = null;
+let lastPos = null;
+let gpsKmAcumulado = 0;
 
-/* ================= VALIDACIÓN DE VENCIMIENTOS ================= */
+/* ================= LOGIN GOOGLE ================= */
+window.iniciarSesionGoogle = async function(){
+  const provider = new GoogleAuthProvider();
+  // NO pedir scope de Drive (ya no lo usamos)
+  provider.setCustomParameters({ prompt: 'select_account' });
+
+  try {
+    const result = await signInWithPopup(auth, provider);
+    console.log('✅ Login OK:', result.user.email);
+    await onLoginSuccess(result.user);
+  } catch (err) {
+    console.warn('Popup falló, intentando redirect...', err.code);
+    // Fallback para PWA instalada o navegadores que bloquean popups
+    if (['auth/popup-blocked', 'auth/popup-closed-by-user', 'auth/cancelled-popup-request'].includes(err.code)) {
+      try { await signInWithRedirect(auth, provider); }
+      catch (e2) { alert('Error: ' + e2.message); }
+    } else {
+      alert('Error al iniciar sesión: ' + (err.message || err.code));
+    }
+  }
+};
+
+/* Resultado de redirect (cuando vuelve de Google) */
+getRedirectResult(auth).then(result => {
+  if (result && result.user) {
+    console.log('✅ Login por redirect:', result.user.email);
+    onLoginSuccess(result.user);
+  }
+}).catch(err => console.warn('Redirect error:', err));
+
+/* Detecta login/logout automáticamente */
+onAuthStateChanged(auth, async (user) => {
+  currentUser = user;
+  if (user) {
+    googleUser = {
+      email: user.email,
+      name: user.displayName,
+      picture: user.photoURL,
+      uid: user.uid
+    };
+    localStorage.setItem('leon_google_user', JSON.stringify(googleUser));
+    mostrarEstadoUsuario();
+    // Cargar datos desde la nube
+    await cargarDatosNube();
+  } else {
+    googleUser = null;
+    localStorage.removeItem('leon_google_user');
+    actualizarUILogin();
+  }
+  document.getElementById('loading').classList.add('hidden');
+  init();
+});
+
+/* Al recibir un usuario logueado */
+async function onLoginSuccess(user) {
+  googleUser = {
+    email: user.email,
+    name: user.displayName,
+    picture: user.photoURL,
+    uid: user.uid
+  };
+  localStorage.setItem('leon_google_user', JSON.stringify(googleUser));
+
+  // Autocompletar datos
+  if (!document.getElementById('r_correo').value) {
+    document.getElementById('r_correo').value = user.email;
+  }
+  if (!document.getElementById('r_nombre').value && user.displayName) {
+    document.getElementById('r_nombre').value = user.displayName;
+  }
+
+  mostrarEstadoUsuario();
+  await cargarDatosNube();
+  init();
+}
+
+function mostrarEstadoUsuario() {
+  if (!googleUser) return;
+  document.getElementById('userBox').classList.remove('hidden');
+  document.getElementById('btnLogin').classList.add('hidden');
+  document.getElementById('uName').textContent = googleUser.name || 'Usuario';
+  document.getElementById('uEmail').textContent = googleUser.email;
+  document.getElementById('uPic').src = googleUser.picture || 'icon-192.png';
+  document.getElementById('googleInfo').textContent = '✅ Sesión activa: ' + googleUser.email;
+  document.getElementById('driveStatus').textContent = '☁️ Cuenta: ' + googleUser.email;
+  document.getElementById('r_correo').value = googleUser.email;
+}
+
+function actualizarUILogin() {
+  document.getElementById('userBox').classList.add('hidden');
+  document.getElementById('btnLogin').classList.remove('hidden');
+  document.getElementById('googleInfo').textContent = 'Inicia sesión una vez y nunca más pedirá cuenta';
+}
+
+window.cerrarSesion = async function(){
+  if (!confirm('¿Cerrar sesión de Google?')) return;
+  try {
+    await signOut(auth);
+    googleUser = null;
+    localStorage.removeItem('leon_google_user');
+    actualizarUILogin();
+  } catch(e) { alert('Error: ' + e.message); }
+};
+
+/* ================= FIRESTORE — SINCRONIZACIÓN ================= */
+async function cargarDatosNube() {
+  if (!currentUser) return;
+  try {
+    const ref = doc(db, 'usuarios', currentUser.uid);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) {
+      console.log('ℹ No hay datos en la nube todavía');
+      return;
+    }
+    const data = snap.data();
+    // Si la nube tiene más datos, restaurar
+    if (data.historial && data.historial.length > (historial?.length || 0)) {
+      if (confirm(`☁️ Hay ${data.historial.length} días en la nube. ¿Restaurar?`)) {
+        if (data.perfil) {
+          perfil = data.perfil;
+          localStorage.setItem(LS_PERFIL, JSON.stringify(perfil));
+        }
+        historial = data.historial;
+        localStorage.setItem(LS_HIST, JSON.stringify(historial));
+        if (data.jornada) {
+          jornada = data.jornada;
+          localStorage.setItem(LS_JORNADA, JSON.stringify(jornada));
+        }
+        init();
+      }
+    }
+  } catch(e) {
+    console.warn('Error al cargar de la nube:', e);
+  }
+}
+
+window.sincronizarSubir = async function(){
+  if (!currentUser) {
+    alert('Primero inicia sesión con Google');
+    return;
+  }
+  try {
+    document.getElementById('driveStatus').textContent = '☁️ Subiendo...';
+    await setDoc(doc(db, 'usuarios', currentUser.uid), {
+      perfil: perfil,
+      historial: historial,
+      jornada: jornada,
+      email: currentUser.email,
+      fecha: new Date().toISOString()
+    });
+    document.getElementById('driveStatus').textContent = '✅ Guardado: ' + new Date().toLocaleString();
+  } catch(e) {
+    console.error(e);
+    document.getElementById('driveStatus').textContent = '❌ Error al guardar';
+    alert('Error: ' + e.message);
+  }
+};
+
+window.sincronizarBajar = async function(){
+  if (!currentUser) {
+    alert('Primero inicia sesión con Google');
+    return;
+  }
+  try {
+    const ref = doc(db, 'usuarios', currentUser.uid);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) {
+      alert('No hay datos guardados en la nube');
+      return;
+    }
+    const data = snap.data();
+    if (!confirm(`¿Restaurar datos del ${new Date(data.fecha).toLocaleString()}?`)) return;
+    if (data.perfil) {
+      perfil = data.perfil;
+      localStorage.setItem(LS_PERFIL, JSON.stringify(perfil));
+    }
+    historial = data.historial || [];
+    localStorage.setItem(LS_HIST, JSON.stringify(historial));
+    jornada = data.jornada || null;
+    if (jornada) localStorage.setItem(LS_JORNADA, JSON.stringify(jornada));
+    else localStorage.removeItem(LS_JORNADA);
+    init();
+    document.getElementById('driveStatus').textContent = '✅ Restaurado';
+  } catch(e) {
+    alert('Error: ' + e.message);
+  }
+};
+
+/* ================= RESTO DE LA APP ================= */
+window.guardarRegistro = function(){
+  const data = {
+    nombre: document.getElementById('r_nombre').value.trim(),
+    tel: document.getElementById('r_tel').value.trim(),
+    placa: document.getElementById('r_placa').value.trim().toUpperCase(),
+    correo: (googleUser && googleUser.email) ? googleUser.email : document.getElementById('r_correo').value.trim().toLowerCase(),
+    rend: parseFloat(document.getElementById('r_rend').value),
+    precio: parseFloat(document.getElementById('r_precio').value),
+    marca: document.getElementById('r_marca').value.trim(),
+    cad: document.getElementById('r_cad').value.trim(),
+    matri: document.getElementById('r_matri').value.trim()
+  };
+  if (!data.nombre || !data.placa || !data.rend || !data.precio) return alert('Completa nombre, placa, rendimiento y precio');
+  perfil = data;
+  localStorage.setItem(LS_PERFIL, JSON.stringify(perfil));
+  // Subir automáticamente a la nube
+  if (currentUser) sincronizarSubir();
+  init();
+};
+
+window.editarRegistro = function(){
+  if (!perfil) return;
+  document.getElementById('r_nombre').value = perfil.nombre || '';
+  document.getElementById('r_tel').value = perfil.tel || '';
+  document.getElementById('r_placa').value = perfil.placa || '';
+  document.getElementById('r_correo').value = perfil.correo || '';
+  document.getElementById('r_rend').value = perfil.rend || '';
+  document.getElementById('r_precio').value = perfil.precio || '';
+  document.getElementById('r_marca').value = perfil.marca || '';
+  document.getElementById('r_cad').value = perfil.cad || '';
+  document.getElementById('r_matri').value = perfil.matri || '';
+  document.getElementById('registroCard').classList.remove('hidden');
+  document.getElementById('appCard').classList.add('hidden');
+  marcarVencimientos();
+};
+
+window.iniciarJornada = function(){
+  const km = toInt(document.getElementById('kmIni').value);
+  if (!km) return alert('Ingresa km');
+  jornada = { A: km, gpsKm: 0 };
+  localStorage.setItem(LS_JORNADA, JSON.stringify(jornada));
+  document.getElementById('kmIni').value = '';
+  updateUI();
+  iniciarGPS();
+};
+
+window.setModo = function(m){
+  modoFinal = m;
+  document.getElementById('btnManual').classList.toggle('active', m === 'manual');
+  document.getElementById('btnGps').classList.toggle('active', m === 'gps');
+  document.getElementById('kmFin').readOnly = (m === 'gps');
+  calcular();
+};
+
+window.finalizarJornada = function(){
+  const C = parseFloat(document.getElementById('ingresos').value) || 0;
+  const F = parseFloat(document.getElementById('otros').value) || 0;
+  const detalle = document.getElementById('detalle').value.trim();
+  let B = (modoFinal === 'gps') ? jornada.A + Math.round(gpsKmAcumulado) : toInt(document.getElementById('kmFin').value);
+  if (!B || B <= jornada.A) { alert('Km final debe ser mayor'); return; }
+  const rec = B - jornada.A;
+  const D = (rec / perfil.rend) * perfil.precio;
+  const E = C - D - F;
+  historial.unshift({ fecha: new Date().toISOString(), A: jornada.A, B: B, rec: rec, C: C, D: D, F: F, E: E, detalle: detalle });
+  localStorage.setItem(LS_HIST, JSON.stringify(historial));
+  if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+  localStorage.removeItem(LS_JORNADA);
+  jornada = null;
+  gpsKmAcumulado = 0;
+  limpiarCamposTemporales();
+  updateUI();
+  render();
+  sincronizarSubir(); // Auto-sync
+  setTimeout(() => {
+    const el = document.getElementById('kmIni');
+    if (el) { el.focus({ preventScroll: false }); el.select(); }
+  }, 80);
+};
+
+window.borrarHistorial = function(){
+  if (confirm('¿Borrar historial?')) {
+    localStorage.removeItem(LS_HIST);
+    historial = [];
+    render();
+    if (currentUser) sincronizarSubir();
+  }
+};
+
+function init(){
+  if (perfil) {
+    document.getElementById('registroCard').classList.add('hidden');
+    document.getElementById('appCard').classList.remove('hidden');
+    mostrarPerfil();
+    updateUI();
+  } else {
+    document.getElementById('registroCard').classList.remove('hidden');
+    document.getElementById('appCard').classList.add('hidden');
+    if (googleUser) document.getElementById('r_correo').value = googleUser.email;
+  }
+  render();
+  marcarVencimientos();
+}
+
+function mostrarPerfil(){
+  if (!perfil) return;
+  const emailTxt = perfil.correo || (googleUser ? googleUser.email : '');
+  let html = perfil.nombre + ' - ' + perfil.placa + '<br>' + emailTxt + ' - Rend: ' + perfil.rend;
+  if (perfil.cad) {
+    const v = vencido(perfil.cad, 'cad');
+    html += "<br>Licencia: <span class='" + (v ? 'txt-caducado' : '') + "'>" + perfil.cad + '</span>';
+  }
+  if (perfil.matri) {
+    const v = vencido(perfil.matri, 'matri');
+    html += "<br>Matrícula: <span class='" + (v ? 'txt-caducado' : '') + "'>" + perfil.matri + '</span>';
+  }
+  document.getElementById('profileView').innerHTML = html;
+}
+
+function updateUI(){
+  const enCurso = !!jornada;
+  if (!perfil) return;
+  document.getElementById('cardInicio').classList.toggle('hidden', enCurso);
+  document.getElementById('cardFin').classList.toggle('hidden', !enCurso);
+  document.getElementById('estadoTxt').innerText = enCurso ? 'En curso' : 'Sin jornada';
+  if (enCurso) {
+    document.getElementById('kA').innerText = jornada.A + ' km';
+    gpsKmAcumulado = jornada.gpsKm || 0;
+    document.getElementById('kGps').innerText = Math.round(gpsKmAcumulado) + ' km';
+    calcular();
+  }
+}
+
+function iniciarGPS(){
+  if (!navigator.geolocation) return;
+  if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+  gpsKmAcumulado = jornada.gpsKm || 0;
+  lastPos = null;
+  watchId = navigator.geolocation.watchPosition(pos => {
+    const lat = pos.coords.latitude;
+    const lng = pos.coords.longitude;
+    if (lastPos) {
+      const d = haversine(lastPos.lat, lastPos.lng, lat, lng);
+      if (d > 0.01 && d < 2) gpsKmAcumulado += d;
+    }
+    lastPos = { lat, lng };
+    jornada.gpsKm = gpsKmAcumulado;
+    localStorage.setItem(LS_JORNADA, JSON.stringify(jornada));
+    document.getElementById('kGps').innerText = Math.round(gpsKmAcumulado) + ' km';
+    if (modoFinal === 'gps') calcular();
+  }, null, { enableHighAccuracy: true });
+}
+
+function haversine(lat1, lon1, lat2, lon2){
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function calcular(){
+  if (!jornada || !perfil) return;
+  const A = jornada.A;
+  let B;
+  if (modoFinal === 'gps') {
+    B = A + Math.round(gpsKmAcumulado);
+    document.getElementById('kmFin').value = B;
+  } else {
+    B = toInt(document.getElementById('kmFin').value);
+    if (!B) B = A;
+  }
+  const C = parseFloat(document.getElementById('ingresos').value) || 0;
+  const F = parseFloat(document.getElementById('otros').value) || 0;
+  const rec = B - A;
+  const recValido = rec > 0 ? rec : 0;
+  const D = recValido > 0 ? (recValido / perfil.rend) * perfil.precio : 0;
+  const E = C - D - F;
+  document.getElementById('kRec').innerText = Math.round(recValido) + ' km';
+  document.getElementById('comb').value = D > 0 ? D.toFixed(2) : '';
+  document.getElementById('kE').innerText = '$' + E.toFixed(2);
+}
+
+function render(){
+  const tbody = document.getElementById('tbodyHist');
+  tbody.innerHTML = '';
+  historial.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>' + new Date(r.fecha).toLocaleDateString() + '</td>' +
+      "<td style='color:#22c55e'>$" + (r.C || 0).toFixed(2) + '</td>' +
+      "<td style='color:#ef4444'>$" + ((r.D || 0) + (r.F || 0)).toFixed(2) + '</td>' +
+      "<td style='color:" + ((r.E || 0) >= 0 ? '#22c55e' : '#ef4444') + ";font-weight:800'>$" + (r.E || 0).toFixed(2) + '</td>';
+    tbody.appendChild(tr);
+  });
+}
+
+function limpiarCamposTemporales(){
+  ['kmIni','kmFin','ingresos','otros','detalle','comb'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+}
+
+/* ================= VALIDACIÓN VENCIMIENTOS ================= */
 function parseCaducidad(v){
-  if(!v) return null;
+  if (!v) return null;
   const m = String(v).trim().match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
-  if(!m) return null;
-  let d=+m[1], mo=+m[2], y=+m[3];
-  if(y<100) y += 2000;
-  if(mo<1||mo>12||d<1||d>31) return null;
-  const f = new Date(y, mo-1, d, 23, 59, 59);
-  if(f.getFullYear()!==y || f.getMonth()!==mo-1 || f.getDate()!==d) return null;
+  if (!m) return null;
+  let d = +m[1], mo = +m[2], y = +m[3];
+  if (y < 100) y += 2000;
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+  const f = new Date(y, mo - 1, d, 23, 59, 59);
+  if (f.getFullYear() !== y || f.getMonth() !== mo - 1 || f.getDate() !== d) return null;
   return f;
 }
 function parseMatricula(v){
-  if(!v) return null;
+  if (!v) return null;
   const m = String(v).trim().match(/^(\d{1,2})[\/\-.](\d{4})$/);
-  if(!m) return null;
-  const mo=+m[1], y=+m[2];
-  if(mo<1||mo>12) return null;
+  if (!m) return null;
+  const mo = +m[1], y = +m[2];
+  if (mo < 1 || mo > 12) return null;
   return new Date(y, mo, 0, 23, 59, 59);
 }
 function vencido(valor, tipo){
-  const f = (tipo==='cad') ? parseCaducidad(valor) : parseMatricula(valor);
-  if(!f) return false;
+  const f = (tipo === 'cad') ? parseCaducidad(valor) : parseMatricula(valor);
+  if (!f) return false;
   return f.getTime() < Date.now();
 }
 function marcarVencimientos(){
   const cadIn = document.getElementById('r_cad');
   const matIn = document.getElementById('r_matri');
-  if(cadIn)  cadIn.classList.toggle('caducado',  vencido(cadIn.value,  'cad'));
-  if(matIn)  matIn.classList.toggle('caducado',  vencido(matIn.value, 'matri'));
-  if(perfil) mostrarPerfil();
+  if (cadIn) cadIn.classList.toggle('caducado', vencido(cadIn.value, 'cad'));
+  if (matIn) matIn.classList.toggle('caducado', vencido(matIn.value, 'matri'));
+  if (perfil) mostrarPerfil();
 }
 
 /* ================= SOLO ENTEROS ================= */
 function soloEnteros(el){
-  if(!el) return;
-  el.addEventListener('input', ()=>{
-    const limpio = el.value.replace(/[^\d]/g,'');
-    if(el.value !== limpio) el.value = limpio;
+  if (!el) return;
+  el.addEventListener('input', () => {
+    const limpio = el.value.replace(/[^\d]/g, '');
+    if (el.value !== limpio) el.value = limpio;
   });
-  el.addEventListener('keydown', (e)=>{
-    const permitidas = ['Backspace','Delete','ArrowLeft','ArrowRight','Tab','Home','End','Enter'];
-    if(permitidas.includes(e.key)) return;
-    if(e.ctrlKey||e.metaKey) return;
-    if(!/^\d$/.test(e.key)) e.preventDefault();
-  });
-  el.addEventListener('paste', (e)=>{
+  el.addEventListener('paste', (e) => {
     e.preventDefault();
-    const t = (e.clipboardData||window.clipboardData).getData('text')||'';
-    el.value = t.replace(/[^\d]/g,'');
+    const t = (e.clipboardData || window.clipboardData).getData('text') || '';
+    el.value = t.replace(/[^\d]/g, '');
   });
 }
-function toInt(v){ const n = parseInt(String(v).replace(/[^\d]/g,''),10); return isNaN(n)?0:n; }
+function toInt(v){ const n = parseInt(String(v).replace(/[^\d]/g, ''), 10); return isNaN(n) ? 0 : n; }
 
-function guardarRegistro(){
-  const data={
-    nombre:document.getElementById('r_nombre').value.trim(),
-    tel:document.getElementById('r_tel').value.trim(),
-    placa:document.getElementById('r_placa').value.trim().toUpperCase(),
-    correo:(googleUser && googleUser.email) ? googleUser.email : document.getElementById('r_correo').value.trim().toLowerCase(),
-    rend:parseFloat(document.getElementById('r_rend').value),
-    precio:parseFloat(document.getElementById('r_precio').value),
-    marca:document.getElementById('r_marca').value.trim(),
-    cad:document.getElementById('r_cad').value.trim(),
-    matri:document.getElementById('r_matri').value.trim()
-  };
-  if(!data.nombre||!data.placa||!data.rend||!data.precio) return alert('Completa nombre, placa, rendimiento y precio');
-  perfil=data; localStorage.setItem(LS_PERFIL, JSON.stringify(perfil)); init();
-}
-function mostrarPerfil(){
-  const emailTxt = perfil.correo ? perfil.correo : (googleUser?googleUser.email:"");
-  let html = perfil.nombre + " - " + perfil.placa + "<br>" + emailTxt + " - Rend: " + perfil.rend;
-  if(perfil.cad){
-    const v = vencido(perfil.cad,'cad');
-    html += "<br>Licencia: <span class='" + (v?'txt-caducado':'') + "'>" + perfil.cad + "</span>";
-  }
-  if(perfil.matri){
-    const v = vencido(perfil.matri,'matri');
-    html += "<br>Matrícula: <span class='" + (v?'txt-caducado':'') + "'>" + perfil.matri + "</span>";
-  }
-  document.getElementById('profileView').innerHTML = html;
-}
-function editarRegistro(){
-  document.getElementById('r_nombre').value=perfil.nombre;
-  document.getElementById('r_tel').value=perfil.tel;
-  document.getElementById('r_placa').value=perfil.placa;
-  document.getElementById('r_correo').value=perfil.correo;
-  document.getElementById('r_rend').value=perfil.rend;
-  document.getElementById('r_precio').value=perfil.precio;
-  document.getElementById('r_marca').value=perfil.marca;
-  document.getElementById('r_cad').value=perfil.cad||'';
-  document.getElementById('r_matri').value=perfil.matri||'';
-  document.getElementById('registroCard').classList.remove('hidden');
-  document.getElementById('appCard').classList.add('hidden');
-  marcarVencimientos();
-}
-function init(){
-  if(perfil){
-    document.getElementById('registroCard').classList.add('hidden');
-    document.getElementById('appCard').classList.remove('hidden');
-    mostrarPerfil(); updateUI();
-  } else {
-    document.getElementById('registroCard').classList.remove('hidden');
-    document.getElementById('appCard').classList.add('hidden');
-    if(googleUser) document.getElementById('r_correo').value = googleUser.email;
-  }
-  render();
-  marcarVencimientos();
-}
-function iniciarJornada(){
-  const km=toInt(document.getElementById('kmIni').value);
-  if(!km) return alert('Ingresa km');
-  jornada={A:km, gpsKm:0};
-  localStorage.setItem(LS_JORNADA, JSON.stringify(jornada));
-  document.getElementById('kmIni').value='';
-  updateUI(); iniciarGPS();
-}
-function updateUI(){
-  const enCurso=!!jornada;
-  if(!perfil) return;
-  document.getElementById('cardInicio').classList.toggle('hidden', enCurso);
-  document.getElementById('cardFin').classList.toggle('hidden',!enCurso);
-  document.getElementById('estadoTxt').innerText=enCurso?'En curso':'Sin jornada';
-  if(enCurso){
-    document.getElementById('kA').innerText=jornada.A+' km';
-    gpsKmAcumulado=jornada.gpsKm||0;
-    document.getElementById('kGps').innerText=Math.round(gpsKmAcumulado)+' km';
-    calcular();
-  }
-}
-function iniciarGPS(){
-  if(!navigator.geolocation) return;
-  if(watchId!==null) navigator.geolocation.clearWatch(watchId);
-  gpsKmAcumulado=jornada.gpsKm||0; lastPos=null;
-  watchId=navigator.geolocation.watchPosition(pos=>{
-    const lat=pos.coords.latitude; const lng=pos.coords.longitude;
-    if(lastPos){
-      const d=haversine(lastPos.lat,lastPos.lng,lat,lng);
-      if(d>0.01 && d<2) gpsKmAcumulado+=d;
+/* ================= LISTENERS ================= */
+setTimeout(() => {
+  ['kmFin', 'ingresos', 'otros'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', calcular);
+  });
+  ['r_cad', 'r_matri'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('input', marcarVencimientos);
+      el.addEventListener('change', marcarVencimientos);
     }
-    lastPos={lat,lng}; jornada.gpsKm=gpsKmAcumulado;
-    localStorage.setItem(LS_JORNADA, JSON.stringify(jornada));
-    document.getElementById('kGps').innerText=Math.round(gpsKmAcumulado)+' km';
-    if(modoFinal==='gps') calcular();
-  },null,{enableHighAccuracy:true});
-}
-function haversine(lat1,lon1,lat2,lon2){
-  const R=6371; const dLat=(lat2-lat1)*Math.PI/180; const dLon=(lon2-lon1)*Math.PI/180;
-  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
-  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
-}
-function setModo(m){
-  modoFinal=m;
-  document.getElementById('btnManual').classList.toggle('active',m==='manual');
-  document.getElementById('btnGps').classList.toggle('active',m==='gps');
-  document.getElementById('kmFin').readOnly=(m==='gps');
-  calcular();
-}
-function calcular(){
-  if(!jornada||!perfil) return;
-  const A=jornada.A;
-  let B;
-  if(modoFinal==='gps'){
-    B = A + Math.round(gpsKmAcumulado);
-    document.getElementById('kmFin').value = B;
-  } else {
-    B = toInt(document.getElementById('kmFin').value);
-    if(!B) B = A;
-  }
-  const C=parseFloat(document.getElementById('ingresos').value)||0;
-  const F=parseFloat(document.getElementById('otros').value)||0;
-  const rec=B-A; const recValido=rec>0?rec:0;
-  const D=recValido>0? (recValido / perfil.rend) * perfil.precio : 0;
-  const E=C-D-F;
-  document.getElementById('kRec').innerText=Math.round(recValido)+' km';
-  document.getElementById('comb').value=D>0? D.toFixed(2) : '';
-  document.getElementById('kE').innerText="$" + E.toFixed(2);
-}
-['kmFin','ingresos','otros'].forEach(id=>{ document.getElementById(id).addEventListener('input',calcular); });
-['r_cad','r_matri'].forEach(id=>{
-  const el=document.getElementById(id);
-  if(el){ el.addEventListener('input',marcarVencimientos); el.addEventListener('change',marcarVencimientos); }
-});
-soloEnteros(document.getElementById('kmIni'));
-soloEnteros(document.getElementById('kmFin'));
-
-function limpiarCamposTemporales(){
-  document.getElementById('kmIni').value='';
-  document.getElementById('kmFin').value='';
-  document.getElementById('ingresos').value='';
-  document.getElementById('otros').value='';
-  document.getElementById('detalle').value='';
-  document.getElementById('comb').value='';
-}
-
-function finalizarJornada(){
-  const C=parseFloat(document.getElementById('ingresos').value)||0;
-  const F=parseFloat(document.getElementById('otros').value)||0;
-  const detalle=document.getElementById('detalle').value.trim();
-  let B = (modoFinal==='gps') ? jornada.A + Math.round(gpsKmAcumulado) : toInt(document.getElementById('kmFin').value);
-  if(!B || B<=jornada.A){ alert('Km final debe ser mayor'); return; }
-  const rec=B-jornada.A; const D=(rec/perfil.rend)*perfil.precio; const E=C-D-F;
-  historial.unshift({fecha:new Date().toISOString(), A:jornada.A, B:B, rec:rec, C:C, D:D, F:F, E:E, detalle:detalle});
-  localStorage.setItem(LS_HIST, JSON.stringify(historial));
-  if(watchId!==null) navigator.geolocation.clearWatch(watchId);
-  localStorage.removeItem(LS_JORNADA); jornada=null; gpsKmAcumulado=0;
-  limpiarCamposTemporales();
-  updateUI(); render();
-  guardarEnDrive();
-  setTimeout(()=>{
-    const el = document.getElementById('kmIni');
-    if(el){ el.focus({preventScroll:false}); el.select(); }
-  }, 80);
-}
-function render(){
-  const tbody=document.getElementById('tbodyHist'); tbody.innerHTML='';
-  historial.forEach(r=>{
-    const ingresos = r.C || 0;
-    const gastos = (r.D || 0) + (r.F || 0);
-    const ganancia = r.E || 0;
-    const tr=document.createElement('tr');
-    tr.innerHTML =
-      "<td>" + new Date(r.fecha).toLocaleDateString() + "</td>" +
-      "<td style='color:#22c55e'>$" + ingresos.toFixed(2) + "</td>" +
-      "<td style='color:#ef4444'>$" + gastos.toFixed(2) + "</td>" +
-      "<td style='color:" + (ganancia>=0?'#22c55e':'#ef4444') + ";font-weight:800'>$" + ganancia.toFixed(2) + "</td>";
-    tbody.appendChild(tr);
   });
-}
-function borrarHistorial(){ if(confirm('¿Borrar?')){ localStorage.removeItem(LS_HIST); historial=[]; render(); } }
-
-/* ================= ARRANQUE ================= */
-init();
-waitForGIS(async ()=>{
-  initGIS();
-  await intentarConexionAutomatica();
-});
+  soloEnteros(document.getElementById('kmIni'));
+  soloEnteros(document.getElementById('kmFin'));
+}, 100);
 
 /* ================= SERVICE WORKER ================= */
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js');
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').then(reg => {
+      reg.update().catch(() => {});
+    }).catch(err => console.warn('SW error:', err));
+  });
 }
 </script>
+
 </body>
 </html>
