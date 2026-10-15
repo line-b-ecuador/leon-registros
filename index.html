@@ -214,7 +214,7 @@ let modoFinal = 'manual';
 let watchId = null;
 let lastPos = null;
 let gpsKmAcumulado = 0;
-let editandoIndex = -1; // Variable para controlar la edición del historial
+let editandoIndex = -1;
 
 /* ================= PERMISO GPS AL ABRIR ================= */
 async function pedirPermisoUbicacion(){
@@ -723,7 +723,7 @@ function render(){
       "<td style='color:#22c55e'>$" + (r.C || 0).toFixed(2) + '</td>' +
       "<td style='color:#ef4444'>$" + ((r.D || 0) + (r.F || 0)).toFixed(2) + '</td>' +
       "<td style='color:" + ((r.E || 0) >= 0 ? '#22c55e' : '#ef4444') + ";font-weight:800'>$" + (r.E || 0).toFixed(2) + '</td>' +
-      // Se aplica transform:scaleX(-1) para que el lápiz apunte hacia la derecha
+      // AQUÍ ESTÁ EL ÚNICO CAMBIO: transform:scaleX(-1) para que el lápiz apunte a la derecha
       `<td><button class="btn-small" style="padding:4px 8px;border-radius:6px;background:#334155;border:none;transform:scaleX(-1)" onclick="abrirModalEditar(${i})">✏️</button></td>`;
     tbody.appendChild(tr);
   });
