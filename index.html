@@ -31,6 +31,7 @@ input{width:100%;padding:12px;border-radius:10px;border:1px solid #334155;backgr
 table{width:100%;font-size:12px;border-collapse:collapse}
 th{color:#94a3b8;text-align:left;padding:6px}
 td{padding:8px 6px;border-top:1px solid #334155}
+tfoot td{border-top:2px solid #334155;font-weight:bold;background:#0f172a;}
 footer{text-align:center;padding:20px;font-size:11px;color:#64748b}
 footer a{color:#94a3b8;text-decoration:underline}
 input.caducado{border:2px solid #ef4444;color:#ef4444;background:#ef444412}
@@ -128,9 +129,10 @@ input.caducado{border:2px solid #ef4444;color:#ef4444;background:#ef444412}
       <div style="overflow:auto">
         <table>
           <thead>
-            <tr><th>Fecha</th><th>Ingresos</th><th>Gastos</th><th>Ganancia</th></tr>
+            <tr><th>Fecha</th><th>Ingresos</th><th>Gastos</th><th>Ganancia</th><th>Acción</th></tr>
           </thead>
           <tbody id="tbodyHist"></tbody>
+          <tfoot id="tfootHist"></tfoot>
         </table>
       </div>
       <button class="btn btn-red" onclick="borrarHistorial()">Borrar historial</button>
@@ -156,6 +158,21 @@ input.caducado{border:2px solid #ef4444;color:#ef4444;background:#ef444412}
   ⚠️ <b>GPS bloqueado</b><br>
   <span style="font-size:12px">LeonCar necesita acceso a tu ubicación para calcular distancias</span><br>
   <button onclick="abrirAjustesGPS()">Abrir Ajustes</button>
+</div>
+
+<!-- Modal de Edición de Historial -->
+<div id="editModal" class="hidden" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px">
+  <div class="card" style="width:100%;max-width:400px;margin:0">
+    <h3 style="margin-top:0">Editar día</h3>
+    <label>Kilometraje final</label><input type="number" id="edit_kmFin" inputmode="numeric">
+    <label>Ingresos</label><input type="number" id="edit_ingresos">
+    <label>Otros gastos</label><input type="number" id="edit_otros">
+    <label>Detalle</label><input id="edit_detalle">
+    <div style="display:flex;gap:10px;margin-top:15px">
+      <button class="btn btn-red" onclick="cerrarModalEditar()">Cancelar</button>
+      <button class="btn btn-green" onclick="guardarEdicion()">Guardar cambios</button>
+    </div>
+  </div>
 </div>
 
 <!-- ================= FIREBASE SDK ================= -->
@@ -197,6 +214,7 @@ let modoFinal = 'manual';
 let watchId = null;
 let lastPos = null;
 let gpsKmAcumulado = 0;
+let editandoIndex = -1; // Variable para controlar la edición del historial
 
 /* ================= PERMISO GPS AL ABRIR ================= */
 async function pedirPermisoUbicacion(){
@@ -538,6 +556,60 @@ window.borrarHistorial = function(){
   }
 };
 
+/* ================= EDICIÓN DEL HISTORIAL ================= */
+window.abrirModalEditar = function(index) {
+  if (index < 0 || index >= historial.length) return;
+  editandoIndex = index;
+  const r = historial[index];
+  
+  document.getElementById('edit_kmFin').value = r.B;
+  document.getElementById('edit_ingresos').value = r.C;
+  document.getElementById('edit_otros').value = r.F;
+  document.getElementById('edit_detalle').value = r.detalle || '';
+  
+  document.getElementById('editModal').classList.remove('hidden');
+};
+
+window.cerrarModalEditar = function() {
+  editandoIndex = -1;
+  document.getElementById('editModal').classList.add('hidden');
+};
+
+window.guardarEdicion = function() {
+  if (editandoIndex === -1) return;
+  const r = historial[editandoIndex];
+  
+  const newB = toInt(document.getElementById('edit_kmFin').value);
+  const newC = parseFloat(document.getElementById('edit_ingresos').value) || 0;
+  const newF = parseFloat(document.getElementById('edit_otros').value) || 0;
+  const newDetalle = document.getElementById('edit_detalle').value.trim();
+
+  if (!newB || newB <= r.A) {
+    alert('Kilometraje final debe ser mayor al inicial (' + r.A + ' km)');
+    return;
+  }
+
+  const rec = newB - r.A;
+  const D = (rec / perfil.rend) * perfil.precio;
+  const E = newC - D - newF;
+
+  historial[editandoIndex] = {
+    ...r,
+    B: newB,
+    rec: rec,
+    C: newC,
+    D: D,
+    F: newF,
+    E: E,
+    detalle: newDetalle
+  };
+
+  localStorage.setItem(LS_HIST, JSON.stringify(historial));
+  render();
+  cerrarModalEditar();
+  sincronizarSubir();
+};
+
 function init(){
   if (perfil) {
     document.getElementById('registroCard').classList.add('hidden');
@@ -634,16 +706,39 @@ function calcular(){
 
 function render(){
   const tbody = document.getElementById('tbodyHist');
+  const tfoot = document.getElementById('tfootHist');
   tbody.innerHTML = '';
-  historial.forEach(r => {
+  tfoot.innerHTML = '';
+  
+  let tIngresos = 0, tGastos = 0, tGanancia = 0;
+
+  historial.forEach((r, i) => {
+    tIngresos += (r.C || 0);
+    tGastos += ((r.D || 0) + (r.F || 0));
+    tGanancia += (r.E || 0);
+
     const tr = document.createElement('tr');
     tr.innerHTML =
       '<td>' + new Date(r.fecha).toLocaleDateString() + '</td>' +
       "<td style='color:#22c55e'>$" + (r.C || 0).toFixed(2) + '</td>' +
       "<td style='color:#ef4444'>$" + ((r.D || 0) + (r.F || 0)).toFixed(2) + '</td>' +
-      "<td style='color:" + ((r.E || 0) >= 0 ? '#22c55e' : '#ef4444') + ";font-weight:800'>$" + (r.E || 0).toFixed(2) + '</td>';
+      "<td style='color:" + ((r.E || 0) >= 0 ? '#22c55e' : '#ef4444') + ";font-weight:800'>$" + (r.E || 0).toFixed(2) + '</td>' +
+      // Se aplica transform:scaleX(-1) para que el lápiz apunte hacia la derecha
+      `<td><button class="btn-small" style="padding:4px 8px;border-radius:6px;background:#334155;border:none;transform:scaleX(-1)" onclick="abrirModalEditar(${i})">✏️</button></td>`;
     tbody.appendChild(tr);
   });
+
+  if (historial.length > 0) {
+    tfoot.innerHTML = `
+      <tr>
+        <td>Total (${historial.length} días)</td>
+        <td style="color:#22c55e">$${tIngresos.toFixed(2)}</td>
+        <td style="color:#ef4444">$${tGastos.toFixed(2)}</td>
+        <td style="color:${tGanancia >= 0 ? '#22c55e' : '#ef4444'}">$${tGanancia.toFixed(2)}</td>
+        <td></td>
+      </tr>
+    `;
+  }
 }
 
 function limpiarCamposTemporales(){
@@ -716,6 +811,7 @@ setTimeout(() => {
   });
   soloEnteros(document.getElementById('kmIni'));
   soloEnteros(document.getElementById('kmFin'));
+  soloEnteros(document.getElementById('edit_kmFin'));
 }, 100);
 
 /* ================= SERVICE WORKER ================= */
