@@ -140,6 +140,10 @@ input.caducado{border:2px solid #ef4444;color:#ef4444;background:#ef444412}
     <div class="card" style="border:2px solid #22c55e">
       <h3 style="margin:0">☁️ Sincronización</h3>
       <p class="small" id="driveStatus">Inicia sesión para sincronizar</p>
+      
+      <!-- Botón de login visible cuando ya hay perfil guardado -->
+      <button id="btnLoginApp" class="btn btn-blue hidden" onclick="iniciarSesionGoogle()" style="margin-top:10px; margin-bottom:10px;">🔵 Iniciar sesión con Google</button>
+      
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
         <button class="btn btn-green" onclick="sincronizarSubir()">Subir a la nube</button>
         <button class="btn btn-yellow" onclick="sincronizarBajar()">Restaurar de nube</button>
@@ -178,7 +182,7 @@ input.caducado{border:2px solid #ef4444;color:#ef4444;background:#ef444412}
 <!-- ================= FIREBASE SDK ================= -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence }
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence }
   from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc }
   from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
@@ -289,50 +293,50 @@ window.iniciarSesionGoogle = async function(){
   provider.setCustomParameters({ prompt: 'select_account' });
 
   try {
+    // Usamos popup para todos los dispositivos (evita el error de sessionStorage en móviles)
     const result = await signInWithPopup(auth, provider);
     console.log('✅ Login OK:', result.user.email);
     await onLoginSuccess(result.user);
   } catch (err) {
-    console.warn('Popup falló, intentando redirect...', err.code);
-    if (['auth/popup-blocked', 'auth/popup-closed-by-user', 'auth/cancelled-popup-request'].includes(err.code)) {
-      try { await signInWithRedirect(auth, provider); }
-      catch (e2) { alert('Error: ' + e2.message); }
+    console.warn('Error en login:', err.code);
+    
+    if (err.code === 'auth/popup-blocked') {
+      alert('⚠️ Tu navegador bloqueó la ventana de Google.\n\nPor favor, habilita las ventanas emergentes (popups) para este sitio en los ajustes de Chrome.');
+    } else if (err.code === 'auth/popup-closed-by-user') {
+      console.log('El usuario cerró la ventana de Google.');
     } else {
       alert('Error al iniciar sesión: ' + (err.message || err.code));
     }
   }
 };
 
-/* Resultado de redirect (cuando vuelve de Google) */
-getRedirectResult(auth).then(result => {
-  if (result && result.user) {
-    console.log('✅ Login por redirect:', result.user.email);
-    onLoginSuccess(result.user);
-  }
-}).catch(err => console.warn('Redirect error:', err));
-
 /* Detecta login/logout automáticamente */
 onAuthStateChanged(auth, async (user) => {
-  currentUser = user;
-  if (user) {
-    googleUser = {
-      email: user.email,
-      name: user.displayName,
-      picture: user.photoURL,
-      uid: user.uid
-    };
-    localStorage.setItem('leon_google_user', JSON.stringify(googleUser));
-    mostrarEstadoUsuario();
-    await cargarDatosNube();
-  } else {
-    googleUser = null;
-    localStorage.removeItem('leon_google_user');
-    actualizarUILogin();
+  try {
+    currentUser = user;
+    if (user) {
+      googleUser = {
+        email: user.email,
+        name: user.displayName,
+        picture: user.photoURL,
+        uid: user.uid
+      };
+      localStorage.setItem('leon_google_user', JSON.stringify(googleUser));
+      mostrarEstadoUsuario();
+      await cargarDatosNube();
+    } else {
+      googleUser = null;
+      localStorage.removeItem('leon_google_user');
+      actualizarUILogin();
+    }
+  } catch (e) {
+    console.error('Error en onAuthStateChanged:', e);
+  } finally {
+    // Esto garantiza que la pantalla de carga desaparezca SIEMPRE, incluso si falla Firebase
+    document.getElementById('loading').classList.add('hidden');
+    init();
+    setTimeout(pedirPermisoUbicacion, 1500);
   }
-  document.getElementById('loading').classList.add('hidden');
-  init();
-  // Pedir permiso GPS al abrir la app
-  setTimeout(pedirPermisoUbicacion, 1500);
 });
 
 /* Al recibir un usuario logueado */
@@ -361,6 +365,7 @@ function mostrarEstadoUsuario() {
   if (!googleUser) return;
   document.getElementById('userBox').classList.remove('hidden');
   document.getElementById('btnLogin').classList.add('hidden');
+  if (document.getElementById('btnLoginApp')) document.getElementById('btnLoginApp').classList.add('hidden');
   document.getElementById('uName').textContent = googleUser.name || 'Usuario';
   document.getElementById('uEmail').textContent = googleUser.email;
   document.getElementById('uPic').src = googleUser.picture || 'icon-192.png';
@@ -372,6 +377,7 @@ function mostrarEstadoUsuario() {
 function actualizarUILogin() {
   document.getElementById('userBox').classList.add('hidden');
   document.getElementById('btnLogin').classList.remove('hidden');
+  if (document.getElementById('btnLoginApp')) document.getElementById('btnLoginApp').classList.remove('hidden');
   document.getElementById('googleInfo').textContent = 'Inicia sesión una vez y nunca más pedirá cuenta';
 }
 
@@ -418,7 +424,9 @@ async function cargarDatosNube() {
 
 window.sincronizarSubir = async function(){
   if (!currentUser) {
-    alert('Primero inicia sesión con Google');
+    if (confirm('Para subir a la nube necesitas iniciar sesión con Google. ¿Iniciar sesión ahora?')) {
+      iniciarSesionGoogle();
+    }
     return;
   }
   try {
@@ -440,7 +448,9 @@ window.sincronizarSubir = async function(){
 
 window.sincronizarBajar = async function(){
   if (!currentUser) {
-    alert('Primero inicia sesión con Google');
+    if (confirm('Para restaurar de la nube necesitas iniciar sesión con Google. ¿Iniciar sesión ahora?')) {
+      iniciarSesionGoogle();
+    }
     return;
   }
   try {
@@ -723,7 +733,7 @@ function render(){
       "<td style='color:#22c55e'>$" + (r.C || 0).toFixed(2) + '</td>' +
       "<td style='color:#ef4444'>$" + ((r.D || 0) + (r.F || 0)).toFixed(2) + '</td>' +
       "<td style='color:" + ((r.E || 0) >= 0 ? '#22c55e' : '#ef4444') + ";font-weight:800'>$" + (r.E || 0).toFixed(2) + '</td>' +
-      // AQUÍ ESTÁ EL ÚNICO CAMBIO: transform:scaleX(-1) para que el lápiz apunte a la derecha
+      // Lápiz corregido hacia la derecha con transform:scaleX(-1)
       `<td><button class="btn-small" style="padding:4px 8px;border-radius:6px;background:#334155;border:none;transform:scaleX(-1)" onclick="abrirModalEditar(${i})">✏️</button></td>`;
     tbody.appendChild(tr);
   });
