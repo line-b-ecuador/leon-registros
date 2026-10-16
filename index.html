@@ -1,11 +1,16 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#1a73e8">
-<link rel="apple-touch-icon" href="icon-192.png">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1a73e8">
+<link rel="apple-touch-icon" href="icon-192.png">
+<!-- Preconnect para acelerar carga de Firebase CDN -->
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://firestore.googleapis.com">
+<link rel="preconnect" href="https://identitytoolkit.googleapis.com">
+<link rel="dns-prefetch" href="https://www.gstatic.com">
 <title>LeonCar</title>
 <style>
 *{box-sizing:border-box;font-family:system-ui,sans-serif}
@@ -141,7 +146,6 @@ input.caducado{border:2px solid #ef4444;color:#ef4444;background:#ef444412}
       <h3 style="margin:0">☁️ Sincronización</h3>
       <p class="small" id="driveStatus">Inicia sesión para sincronizar</p>
       
-      <!-- Botón de login visible cuando ya hay perfil guardado -->
       <button id="btnLoginApp" class="btn btn-blue hidden" onclick="iniciarSesionGoogle()" style="margin-top:10px; margin-bottom:10px;">🔵 Iniciar sesión con Google</button>
       
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
@@ -220,6 +224,36 @@ let lastPos = null;
 let gpsKmAcumulado = 0;
 let editandoIndex = -1;
 
+/* ============================================================
+   MOSTRAR LA APP INMEDIATAMENTE (sin esperar a Firebase)
+   Los datos locales están en localStorage, así que se pueden
+   mostrar al instante. Firebase se inicializa en segundo plano.
+   ============================================================ */
+function mostrarAppInmediatamente() {
+  // Restaurar el usuario guardado (si existía) para mostrar la UI coherente
+  try {
+    const gu = JSON.parse(localStorage.getItem('leon_google_user') || 'null');
+    if (gu) {
+      googleUser = gu;
+      mostrarEstadoUsuario();
+    }
+  } catch (e) {}
+  
+  // Inicializar la UI con datos locales
+  init();
+  document.getElementById('loading').classList.add('hidden');
+  
+  // Pedir permiso GPS después de mostrar la app
+  setTimeout(pedirPermisoUbicacion, 800);
+}
+
+// Ejecutar al terminar de cargar el DOM (inmediato)
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', mostrarAppInmediatamente);
+} else {
+  mostrarAppInmediatamente();
+}
+
 /* ================= PERMISO GPS AL ABRIR ================= */
 async function pedirPermisoUbicacion(){
   if (!navigator.geolocation) {
@@ -293,7 +327,6 @@ window.iniciarSesionGoogle = async function(){
   provider.setCustomParameters({ prompt: 'select_account' });
 
   try {
-    // Usamos popup para todos los dispositivos (evita el error de sessionStorage en móviles)
     const result = await signInWithPopup(auth, provider);
     console.log('✅ Login OK:', result.user.email);
     await onLoginSuccess(result.user);
@@ -310,7 +343,7 @@ window.iniciarSesionGoogle = async function(){
   }
 };
 
-/* Detecta login/logout automáticamente */
+/* Detecta login/logout automáticamente (en segundo plano) */
 onAuthStateChanged(auth, async (user) => {
   try {
     currentUser = user;
@@ -329,13 +362,10 @@ onAuthStateChanged(auth, async (user) => {
       localStorage.removeItem('leon_google_user');
       actualizarUILogin();
     }
+    // Refrescar UI con el estado real de autenticación
+    init();
   } catch (e) {
     console.error('Error en onAuthStateChanged:', e);
-  } finally {
-    // Esto garantiza que la pantalla de carga desaparezca SIEMPRE, incluso si falla Firebase
-    document.getElementById('loading').classList.add('hidden');
-    init();
-    setTimeout(pedirPermisoUbicacion, 1500);
   }
 });
 
@@ -733,7 +763,6 @@ function render(){
       "<td style='color:#22c55e'>$" + (r.C || 0).toFixed(2) + '</td>' +
       "<td style='color:#ef4444'>$" + ((r.D || 0) + (r.F || 0)).toFixed(2) + '</td>' +
       "<td style='color:" + ((r.E || 0) >= 0 ? '#22c55e' : '#ef4444') + ";font-weight:800'>$" + (r.E || 0).toFixed(2) + '</td>' +
-      // Lápiz corregido hacia la derecha con transform:scaleX(-1)
       `<td><button class="btn-small" style="padding:4px 8px;border-radius:6px;background:#334155;border:none;transform:scaleX(-1)" onclick="abrirModalEditar(${i})">✏️</button></td>`;
     tbody.appendChild(tr);
   });
@@ -827,9 +856,8 @@ setTimeout(() => {
 /* ================= SERVICE WORKER ================= */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').then(reg => {
-      reg.update().catch(() => {});
-    }).catch(err => console.warn('SW error:', err));
+    // NO forzamos reg.update() en cada carga, eso retrasa la apertura
+    navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW error:', err));
   });
 }
 </script>
